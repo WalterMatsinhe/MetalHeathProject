@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="sty    <footer class="footer">
+      <span class="title">&copy;</span>2025 MENTALHEALTH. All rights reserved.
+    </footer>
+
+    <!-- Organized JavaScript Files -->
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>" href="style.css" />
+    <title>Login</title>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="navbar-logo">
+        <span class="logo-main">MENTAL</span
+        ><span class="logo-accent accent">HEALTH</span>
+      </div>
+      <div class="navbar-actions">
+        <button onclick="location.href='login.html'" class="btn btn-outline">
+          Login
+        </button>
+        <button onclick="location.href='register.html'" class="btn btn-primary">
+          Register
+        </button>
+      </div>
+    </nav>
+    <main class="login-main">
+      <div class="login-card">
+        <h2 class="login-title">Login to Your Account</h2>
+        <p>
+          Don't have an account?
+          <a href="register.html" class="accent">Register here</a>
+        </p>
+        <form class="login-form" action="/api/auth/login" method="POST">
+          <label for="email" class="login-label">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            class="login-input"
+            required
+          />
+          <label for="password" class="login-label">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="login-input"
+            required
+          />
+          <button type="submit" class="btn btn-primary login-button">
+            Login
+          </button>
+        </form>
+      </div>
+    </main>
+    <!-- Footer -->
+    <footer class="footer login-footer">
+      <span class="title">&copy;</span>2025 MENTALHEALTH. All rights reserved.
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

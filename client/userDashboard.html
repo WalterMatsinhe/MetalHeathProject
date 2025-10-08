@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>User Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="navbar-logo">
+        <span class="logo-main">MENTAL</span
+        ><span class="logo-accent accent">HEALTH</span>
+      </div>
+      <div class="navbar-actions">
+        <button
+          onclick="showNotifications()"
+          class="btn btn-profile"
+          title="Notifications"
+          style="position: relative"
+        >
+          <!-- Notification Bell Icon -->
+          <i class="fa-solid fa-bell" style="font-size: 20px"></i>
+          <!-- Notification Badge -->
+          <span
+            id="notification-badge"
+            class="notification-badge"
+            style="display: none"
+            >0</span
+          >
+        </button>
+        <button onclick="logout()" class="btn btn-logout">Logout</button>
+      </div>
+    </nav>
+    <div class="dashboard-container">
+      <aside class="sidebar">
+        <!-- Profile Section -->
+        <div class="sidebar-profile">
+          <div class="sidebar-profile-image">
+            <img
+              id="sidebarProfileImage"
+              src="../assets/profile-pictures/default-avatar.svg"
+              alt="Profile Picture"
+              class="sidebar-profile-img"
+              onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiNGMEYwRjAiLz4KPGNpcmNsZSBjeD0iMzAiIGN5PSIyMyIgcj0iMTAiIGZpbGw9IiM5OTk5OTkiLz4KPHBhdGggZD0iTTEwIDUwQzEwIDQwIDIwIDMzIDMwIDMzUzUwIDQwIDUwIDUwIiBmaWxsPSIjOTk5OTk5Ii8+Cjwvc3ZnPgo='"
+            />
+          </div>
+          <div class="sidebar-profile-info">
+            <h4 class="sidebar-profile-name" id="sidebarUserName">User</h4>
+            <p class="sidebar-profile-status" id="sidebarWelcomeMessage">
+              Welcome back!
+            </p>
+          </div>
+        </div>
+        <hr class="sidebar-divider" />
+
+        <ul>
+          <li>
+            <a href="#dashboard" onclick="showSection('dashboard')"
+              ><i class="fas fa-chart-line"></i>&nbsp; Dashboard</a
+            >
+          </li>
+          <li>
+            <a href="#awareness" onclick="showSection('awareness')"
+              ><i class="fa-solid fa-brain"></i>&nbsp; Mental Health
+              Awareness</a
+            >
+          </li>
+          <li>
+            <a href="#resources" onclick="showSection('resources')"
+              ><i class="fa-solid fa-phone"></i>&nbsp; Reliable Resources &
+              Contacts</a
+            >
+          </li>
+          <li>
+            <a href="#mood" onclick="showSection('mood')"
+              ><i class="fa-solid fas fa-heart"></i>&nbsp; Mood Tracking
+              Tools</a
+            >
+          </li>
+          <li>
+            <a href="#support" onclick="showSection('support')"
+              ><i class="fa-solid fas fa-video"></i>&nbsp; Peer & Professional
+              Support</a
+            >
+          </li>
+          <li>
+            <a href="#chat" onclick="showSection('chat')"
+              ><i class="fa-solid fa-comments"></i>&nbsp; Chat with
+              Therapists</a
+            >
+          </li>
+          <li>
+            <a href="#profile" onclick="showSection('profile')"
+              ><i class="fa-solid fa-user-cog"></i>&nbsp; Profile</a
+            >
+          </li>
+        </ul>
+      </aside>
+      <main class="main-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="content-section">
+          <header class="dashboard-header">
+            <h2 class="title dashboard-title">
+              Welcome to Your<span class="accent"> Dashboard</span>
+            </h2>
+            <p class="dashboard-desc">
+              Your personal mental health journey starts here. Track your
+              progress, access resources, and stay connected with your
+              well-being.
+            </p>
+          </header>
+          <hr class="dashboard-hr" />
+
+          <!-- Visual Analytics Charts -->
+          <section class="visual-analytics">
+            <h3 class="dashboard-subtitle">Visual Analytics</h3>
+            <div class="charts-container">
+              <div class="charts-grid">
+                <!-- Progress Chart -->
+                <div class="chart-card">
+                  <div class="chart-header">
+                    <h4 class="chart-title">Goals Progress</h4>
+                    <span class="chart-subtitle">Current status</span>
+                  </div>
+                  <div class="chart-wrapper">
+                    <canvas id="progressChart" class="chart-canvas"></canvas>
+                  </div>
+                </div>
+
+                <!-- Activity Chart -->
+                <div class="chart-card">
+                  <div class="chart-header">
+                    <h4 class="chart-title">Weekly Activities</h4>
+                    <span class="chart-subtitle">Hours spent</span>
+                  </div>
+                  <div class="chart-wrapper">
+                    <canvas id="activityChart" class="chart-canvas"></canvas>
+                  </div>
+                </div>
+
+                <!-- Wellness Gauge -->
+                <div class="chart-card">
+                  <div class="chart-header">
+                    <h4 class="chart-title">Wellness Score</h4>
+                    <span class="chart-subtitle">Overall health</span>
+                  </div>
+                  <div class="chart-wrapper">
+                    <canvas id="wellnessGauge" class="chart-canvas"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+          <!-- Quick Stats Overview -->
+          <section class="dashboard-stats">
+            <h3 class="dashboard-subtitle">Your Progress Overview</h3>
+            <div class="stats-grid">
+              <div class="stat-card stat-card-blue">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="dashboardDaysActive">0</span>
+                  <span class="stat-label">Days Active</span>
+                </div>
+              </div>
+              <div class="stat-card stat-card-green">
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="dashboardSessionsCompleted"
+                    >0</span
+                  >
+                  <span class="stat-label">Sessions Completed</span>
+                </div>
+              </div>
+              <div class="stat-card stat-card-purple">
+                <div class="stat-icon">😊</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="dashboardMoodEntries">0</span>
+                  <span class="stat-label">Mood Entries</span>
+                </div>
+              </div>
+              <div class="stat-card stat-card-orange">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="dashboardGoalsAchieved">0</span>
+                  <span class="stat-label">Goals Achieved</span>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Today's Wellness Check -->
+          <section class="wellness-check">
+            <h3 class="dashboard-subtitle">Today's Wellness Check</h3>
+            <div class="wellness-container">
+              <div class="wellness-card">
+                <div class="wellness-header">
+                  <span class="wellness-icon">💭</span>
+                  <h4>How are you feeling today?</h4>
+                </div>
+                <div class="mood-selector">
+                  <button
+                    class="mood-btn"
+                    data-mood="very-happy"
+                    title="Very Happy"
+                  >
+                    😄
+                  </button>
+                  <button class="mood-btn" data-mood="happy" title="Happy">
+                    😊
+                  </button>
+                  <button class="mood-btn" data-mood="neutral" title="Neutral">
+                    😐
+                  </button>
+                  <button class="mood-btn" data-mood="sad" title="Sad">
+                    😢
+                  </button>
+                  <button
+                    class="mood-btn"
+                    data-mood="very-sad"
+                    title="Very Sad"
+                  >
+                    😭
+                  </button>
+                </div>
+                <div class="wellness-notes">
+                  <textarea
+                    id="dailyNotes"
+                    placeholder="Add a note about your day (optional)..."
+                    rows="3"
+                  ></textarea>
+                  <button
+                    class="submit-wellness-btn"
+                    onclick="saveDailyWellness()"
+                  >
+                    Save Today's Check-in
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Recent Activity -->
+          <section class="recent-activity">
+            <h3 class="dashboard-subtitle">Recent Activity</h3>
+            <div class="activity-container">
+              <div class="activity-list" id="activityList">
+                <div class="activity-item">
+                  <div class="activity-icon">📊</div>
+                  <div class="activity-content">
+                    <h4>Welcome to Mental Health Platform!</h4>
+                    <p>
+                      You've successfully created your account. Start your
+                      journey to better mental health.
+                    </p>
+                    <span class="activity-time">Just now</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Daily Tips & Motivation -->
+          <section class="daily-tips">
+            <h3 class="dashboard-subtitle">Daily Motivation</h3>
+            <div class="tips-container">
+              <div class="tip-card">
+                <div class="tip-icon">💡</div>
+                <div class="tip-content">
+                  <h4>Today's Tip</h4>
+                  <p id="dailyTip">
+                    "Take time to breathe deeply and center yourself. Even 5
+                    minutes of mindful breathing can reduce stress and improve
+                    your mood."
+                  </p>
+                </div>
+              </div>
+              <div class="motivation-card">
+                <div class="motivation-icon">⭐</div>
+                <div class="motivation-content">
+                  <h4>Daily Affirmation</h4>
+                  <p id="dailyAffirmation">
+                    "I am worthy of love, care, and happiness. I choose to be
+                    kind to myself today."
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Upcoming Reminders -->
+          <section class="reminders">
+            <h3 class="dashboard-subtitle">Reminders & Goals</h3>
+            <div class="reminders-container">
+              <div class="reminder-card">
+                <div class="reminder-icon">🎯</div>
+                <div class="reminder-content">
+                  <h4>Daily Goals</h4>
+                  <ul class="goals-list">
+                    <li>
+                      <label class="goal-item">
+                        <input type="checkbox" /> Complete mood check-in
+                      </label>
+                    </li>
+                    <li>
+                      <label class="goal-item">
+                        <input type="checkbox" /> Practice 10 minutes of
+                        mindfulness
+                      </label>
+                    </li>
+                    <li>
+                      <label class="goal-item">
+                        <input type="checkbox" /> Read one mental health article
+                      </label>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="reminder-card">
+                <div class="reminder-icon">⏰</div>
+                <div class="reminder-content">
+                  <h4>Upcoming</h4>
+                  <ul class="reminders-list">
+                    <li>Evening reflection - 6:00 PM</li>
+                    <li>Weekly wellness check - Tomorrow</li>
+                    <li>Monthly progress review - In 2 weeks</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="scroll-indicator dashboard-scroll-indicator">
+            <span>↓</span> Explore other sections from the sidebar
+          </div>
+        </section>
+
+        <section id="awareness" class="content-section content-section-hidden">
+          <header class="awareness-header">
+            <h2 class="awareness-title">
+              Mental Health <span class="accent">Awareness</span>
+            </h2>
+            <p class="awareness-desc">
+              Mental health is the foundation of our emotional, psychological,
+              and social well-being. It shapes how we think, feel, act, and
+              interact with others. Prioritizing mental health helps us manage
+              stress, build strong relationships, and make healthy choices
+              throughout life.
+            </p>
+          </header>
+          <hr class="awareness-hr" />
+          <section class="awareness-section">
+            <h3 class="awareness-subtitle">Why Mental Health Matters</h3>
+            <div class="awareness-grid">
+              <div class="awareness-item">
+                <div class="awareness-item-header">
+                  <span class="awareness-number">01</span>
+                  <h4>Personal Impact</h4>
+                </div>
+                <p class="awareness-item-desc">
+                  Impacts relationships, productivity, and physical health
+                </p>
+              </div>
+              <div class="awareness-item">
+                <div class="awareness-item-header">
+                  <span class="awareness-number">02</span>
+                  <h4>Community Benefits</h4>
+                </div>
+                <p class="awareness-item-desc">
+                  Reduces stigma and encourages open conversations
+                </p>
+              </div>
+              <div class="awareness-item">
+                <div class="awareness-item-header">
+                  <span class="awareness-number">03</span>
+                  <h4>Support Network</h4>
+                </div>
+                <p class="awareness-item-desc">
+                  Empowers people to seek help and support
+                </p>
+              </div>
+              <div class="awareness-item">
+                <div class="awareness-item-header">
+                  <span class="awareness-number">04</span>
+                  <h4>Economic Impact</h4>
+                </div>
+                <p class="awareness-item-desc">
+                  Reduces healthcare costs and improves workplace performance
+                </p>
+              </div>
+            </div>
+          </section>
+          <hr class="awareness-hr" />
+          <section class="awareness-section">
+            <h3 class="awareness-subtitle">Common Challenges</h3>
+            <div class="challenge-grid">
+              <div class="challenge-item">
+                <h4 class="challenge-title">Anxiety & Stress</h4>
+                <p class="challenge-desc">
+                  Persistent worry, tension, or nervousness that can affect
+                  daily life.
+                </p>
+              </div>
+              <div class="challenge-item">
+                <h4 class="challenge-title">Depression</h4>
+                <p class="challenge-desc">
+                  Ongoing sadness, loss of interest, or hopelessness that lasts
+                  for weeks or longer.
+                </p>
+              </div>
+              <div class="challenge-item">
+                <h4 class="challenge-title">Burnout</h4>
+                <p class="challenge-desc">
+                  Emotional exhaustion from prolonged stress, often related to
+                  work or caregiving.
+                </p>
+              </div>
+              <div class="challenge-item">
+                <h4 class="challenge-title">Social Isolation</h4>
+                <p class="challenge-desc">
+                  Feeling disconnected or alone, which can impact mental and
+                  physical health.
+                </p>
+              </div>
+            </div>
+          </section>
+          <hr class="awareness-hr" />
+          <section class="awareness-section">
+            <h3 class="awareness-subtitle">Tips for Well-being</h3>
+            <div class="tips-container">
+              <div class="tips-list">
+                <div class="tip-item">
+                  <span class="tip-bullet">•</span>
+                  <span class="tip-text"
+                    >Practice mindfulness and self-care</span
+                  >
+                </div>
+                <div class="tip-item">
+                  <span class="tip-bullet">•</span>
+                  <span class="tip-text">Stay connected with loved ones</span>
+                </div>
+                <div class="tip-item">
+                  <span class="tip-bullet">•</span>
+                  <span class="tip-text"
+                    >Seek professional help when needed</span
+                  >
+                </div>
+                <div class="tip-item">
+                  <span class="tip-bullet">•</span>
+                  <span class="tip-text"
+                    >Maintain healthy sleep, nutrition, and exercise</span
+                  >
+                </div>
+                <div class="tip-item">
+                  <span class="tip-bullet">•</span>
+                  <span class="tip-text"
+                    >Limit screen time and take regular breaks</span
+                  >
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="awareness-hr" />
+          <section class="awareness-section">
+            <h3 class="awareness-subtitle">Video Support</h3>
+            <div class="video-support-container">
+              <div class="video-grid">
+                <div class="video-card">
+                  <div class="video-wrapper">
+                    <iframe
+                      src="https://www.youtube-nocookie.com/embed/DxIDKZHW3-E?rel=0&modestbranding=1&enablejsapi=0&iv_load_policy=3&showinfo=0&controls=1"
+                      title="What is Mental Health?"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowfullscreen
+                    ></iframe>
+                  </div>
+                  <div class="video-info">
+                    <h4 class="video-title">What is Mental Health?</h4>
+                    <p class="video-description">
+                      Understanding the basics of mental health and its
+                      importance in our daily lives.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="video-card">
+                  <div class="video-wrapper">
+                    <iframe
+                      src="https://www.youtube-nocookie.com/embed/rkZl2gsLUp4?rel=0&modestbranding=1&enablejsapi=0&iv_load_policy=3&showinfo=0&controls=1"
+                      title="Managing Anxiety and Stress"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowfullscreen
+                    ></iframe>
+                  </div>
+                  <div class="video-info">
+                    <h4 class="video-title">Managing Anxiety and Stress</h4>
+                    <p class="video-description">
+                      Practical techniques and strategies for managing anxiety
+                      and stress in everyday situations.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="video-card">
+                  <div class="video-wrapper">
+                    <iframe
+                      src="https://www.youtube-nocookie.com/embed/3nwwKbM_vJc?rel=0&modestbranding=1&enablejsapi=0&iv_load_policy=3&showinfo=0&controls=1"
+                      title="How to Support Someone with Mental Health Issues"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowfullscreen
+                    ></iframe>
+                  </div>
+                  <div class="video-info">
+                    <h4 class="video-title">How to Support Someone</h4>
+                    <p class="video-description">
+                      Learn how to be there for friends and family members who
+                      are struggling with mental health.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="video-card">
+                  <div class="video-wrapper">
+                    <iframe
+                      src="https://www.youtube-nocookie.com/embed/nCrjevx3-Js?rel=0&modestbranding=1&enablejsapi=0&iv_load_policy=3&showinfo=0&controls=1"
+                      title="Mindfulness and Mental Health"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowfullscreen
+                    ></iframe>
+                  </div>
+                  <div class="video-info">
+                    <h4 class="video-title">Mindfulness for Mental Health</h4>
+                    <p class="video-description">
+                      Discover the power of mindfulness and meditation for
+                      improving mental well-being.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="awareness-hr" />
+          <section class="mental-health-stats">
+            <h3 class="accent stats-title">Mental Health By The Numbers</h3>
+            <div class="stats-row">
+              <div class="stat-column">
+                <div class="stat-number">1 in 4</div>
+                <div class="stat-description">
+                  people experience mental health issues
+                </div>
+              </div>
+              <div class="stat-column">
+                <div class="stat-number">75%</div>
+                <div class="stat-description">
+                  of mental health conditions start before age 25
+                </div>
+              </div>
+              <div class="stat-column">
+                <div class="stat-number">60%</div>
+                <div class="stat-description">
+                  don't seek help due to stigma
+                </div>
+              </div>
+            </div>
+          </section>
+          <div class="scroll-indicator awareness-scroll-indicator">
+            <span>↓</span> Explore more sections below
+          </div>
+        </section>
+        <section id="resources" class="content-section content-section-hidden">
+          <header class="resources-header">
+            <h2 class="title accent resources-title">
+              <i class="fa-solid fa-phone"></i>&nbsp; Reliable Resources &
+              Contacts in Kenya
+            </h2>
+            <p class="resources-desc">
+              Access trusted mental health resources, crisis support, and
+              professional organizations across Kenya to help you on your mental
+              health journey.
+            </p>
+          </header>
+          <hr class="resources-hr" />
+
+          <!-- Emergency & Crisis Support -->
+          <section class="resources-section">
+            <h3 class="accent resources-subtitle">
+              <i class="fa-solid fa-triangle-exclamation"></i>&nbsp; Emergency &
+              Crisis Support in Kenya
+            </h3>
+            <div class="resources-cards-row">
+              <div class="resource-card resource-card-red">
+                <span class="resource-card-icon"
+                  ><i class="fa-solid fa-shield-halved"></i
+                ></span>
+                <strong>Kenya Police Emergency</strong>
+                <p>Emergency Services</p>
+                <a href="tel:999" class="resource-link">999</a>
+                <small>Police emergency line for immediate assistance</small>
+              </div>
+              <div class="resource-card resource-card-orange">
+                <span class="resource-card-icon"
+                  ><i class="fa-solid fa-comments"></i
+                ></span>
+                <strong>Befrienders Kenya</strong>
+                <p>Suicide Prevention Helpline</p>
+                <a href="tel:+254722178177" class="resource-link"
+                  >+254 722 178 177</a
+                >
+                <small
+                  >24/7 confidential emotional support and suicide
+                  prevention</small
+                >
+              </div>
+              <div class="resource-card resource-card-blue">
+                <span class="resource-card-icon"
+                  ><i class="fa-solid fa-heart-pulse"></i
+                ></span>
+                <strong>Amref Health Africa</strong>
+                <p>Mental Health Support</p>
+                <a href="tel:+254703037000" class="resource-link"
+                  >+254 703 037 000</a
+                >
+                <small>Mental health services and counseling support</small>
+              </div>
+            </div>
+          </section>
+          <hr class="resources-hr" />
+
+          <!-- Professional Organizations -->
+          <section class="resources-section">
+            <h3 class="accent resources-subtitle">
+              <i class="fa-solid fa-hospital"></i>&nbsp; Professional
+              Organizations & Hospitals in Kenya
+            </h3>
+            <div class="resources-cards-row">
+              <div class="resource-card resource-card-green">
+                <span class="resource-card-icon"
+                  ><i class="fa-solid fa-hospital-user"></i
+                ></span>
+                <strong>Kenyatta National Hospital</strong>
+                <p>Mental Health Department</p>
+                <a href="tel:+254202726300" class="resource-link"
+                  >+254 20 2726300</a
+                >
+                <small
+                  >National referral hospital with psychiatric services</small
+                >
+              </div>
+              <div class="resource-card resource-card-purple">
+                <span class="resource-card-icon"
+                  ><i class="fa-solid fa-brain"></i
+                ></span>
+                <strong>Mathari National Teaching & Referral Hospital</strong>
+                <p>Specialized mental health care</p>
+                <a href="tel:+254202715011" class="resource-link"
+                  >+254 20 2715011</a
+                >
+                <small>Kenya's premier mental health facility</small>
+              </div>
+              <div class="resource-card resource-card-teal">
+                <span class="resource-card-icon"
+                  ><i class="fa-solid fa-user-doctor"></i
+                ></span>
+                <strong>Kenya Psychological Association</strong>
+                <p>Professional psychology services</p>
+                <a
+                  href="https://www.kenyapsychology.org"
+                  target="_blank"
+                  class="resource-link"
+                  >Visit KPA</a
+                >
+                <small>Find licensed psychologists across Kenya</small>
+              </div>
+            </div>
+          </section>
+          <hr class="resources-hr" />
+
+          <!-- Support Communities -->
+          <section class="resources-section">
+            <h3 class="accent resources-subtitle">
+              <i class="fa-solid fa-handshake"></i>&nbsp; Support Communities &
+              Organizations in Kenya
+            </h3>
+            <div class="resources-cards-row">
+              <div class="resource-card resource-card-pink">
+                <span class="resource-card-icon"
+                  ><i class="fa-solid fa-lightbulb"></i
+                ></span>
+                <strong>Mental Health Kenya</strong>
+                <p>Community mental health advocacy</p>
+                <a
+                  href="https://www.mentalhealthkenya.org"
+                  target="_blank"
+                  class="resource-link"
+                  >Visit Mental Health Kenya</a
+                >
+                <small>Local advocacy and support for mental wellness</small>
+              </div>
+              <div class="resource-card resource-card-yellow">
+                <span class="resource-card-icon"
+                  ><i class="fa-solid fa-spa"></i
+                ></span>
+                <strong>Mindfulness Kenya</strong>
+                <p>Meditation and wellness programs</p>
+                <a href="tel:+254722000000" class="resource-link"
+                  >+254 722 000 000</a
+                >
+                <small>Local meditation and mindfulness practices</small>
+              </div>
+              <div class="resource-card resource-card-indigo">
+                <span class="resource-card-icon"
+                  ><i class="fa-solid fa-mobile-screen"></i
+                ></span>
+                <strong>Kenya Red Cross Psychosocial Support</strong>
+                <p>Community counseling services</p>
+                <a href="tel:+254202730170" class="resource-link"
+                  >+254 20 2730170</a
+                >
+                <small>Free psychosocial support and counseling</small>
+              </div>
+            </div>
+          </section>
+          <hr class="resources-hr" />
+
+          <!-- Specialized Support -->
+          <section class="resources-section">
+            <h3 class="accent resources-subtitle">
+              <i class="fa-solid fa-bullseye"></i>&nbsp; Specialized Support in
+              Kenya
+            </h3>
+            <div class="specialized-support-grid">
+              <div class="specialized-card">
+                <h4>
+                  <i class="fa-solid fa-rainbow"></i>&nbsp; LGBTQ+ Support
+                </h4>
+                <ul>
+                  <li>
+                    <a href="https://www.galck.org" target="_blank"
+                      >GALCK (Gay and Lesbian Coalition of Kenya)</a
+                    >
+                    - LGBTQ+ advocacy and support
+                  </li>
+                  <li>
+                    <strong>Phone:</strong> +254 712 345 678 - Safe space
+                    counseling
+                  </li>
+                </ul>
+              </div>
+              <div class="specialized-card">
+                <h4>
+                  <i class="fa-solid fa-venus"></i>&nbsp; Women's Mental Health
+                </h4>
+                <ul>
+                  <li>
+                    <a href="https://www.fida.co.ke" target="_blank"
+                      >FIDA Kenya</a
+                    >
+                    - Women's legal and psychological support
+                  </li>
+                  <li>
+                    <strong>Phone:</strong> +254 20 3874 138 - Gender-based
+                    violence counseling
+                  </li>
+                </ul>
+              </div>
+              <div class="specialized-card">
+                <h4>
+                  <i class="fa-solid fa-people-group"></i>&nbsp; Community
+                  Support Groups
+                </h4>
+                <ul>
+                  <li>
+                    <strong>Nairobi Mental Health Support Group</strong> -
+                    Weekly meetings in Nairobi
+                  </li>
+                  <li>
+                    <strong>Mombasa Wellness Circle</strong> - Coastal region
+                    support network
+                  </li>
+                </ul>
+              </div>
+              <div class="specialized-card">
+                <h4>
+                  <i class="fa-solid fa-house-user"></i>&nbsp; Family & Youth
+                  Resources
+                </h4>
+                <ul>
+                  <li>
+                    <a href="https://www.childlinekenya.co.ke" target="_blank"
+                      >Childline Kenya</a
+                    >
+                    - Child protection and counseling
+                  </li>
+                  <li>
+                    <strong>Helpline:</strong> 116 - Free child helpline
+                    services
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+          <hr class="resources-hr" />
+
+          <!-- Important Notice -->
+          <aside class="important-notice">
+            <h3 class="accent notice-title">
+              <i class="fa-solid fa-circle-exclamation"></i>&nbsp; Important
+              Notice for Kenya
+            </h3>
+            <div class="notice-content">
+              <p>
+                <strong
+                  >If you're experiencing a mental health emergency in
+                  Kenya:</strong
+                >
+              </p>
+              <ul>
+                <li>
+                  Call <strong>999</strong> for Kenya Police emergency services
+                </li>
+                <li>
+                  Call Befrienders Kenya:
+                  <strong>+254 722 178 177</strong> (24/7 suicide prevention)
+                </li>
+                <li>Visit your nearest public hospital emergency department</li>
+                <li>
+                  Contact Amref Health Africa: <strong>+254 703 037 000</strong>
+                </li>
+              </ul>
+              <p class="notice-disclaimer">
+                These resources are for informational purposes only and do not
+                constitute medical advice. Always consult with a qualified
+                healthcare professional for proper diagnosis and treatment.
+                Services may vary by location within Kenya.
+              </p>
+            </div>
+          </aside>
+        </section>
+        <section id="mood" class="content-section content-section-hidden">
+          <h2>Mood Tracking Tools</h2>
+          <p>
+            Track your mood daily to identify patterns and triggers. Use our
+            integrated mood tracker or download recommended apps to monitor your
+            emotional well-being.
+          </p>
+          <button onclick="alert('Mood tracker coming soon!')">
+            Open Mood Tracker
+          </button>
+        </section>
+        <section id="support" class="content-section content-section-hidden">
+          <header class="support-header">
+            <h2 class="title accent support-title">
+              Peer & Professional Support
+            </h2>
+            <p class="support-desc">
+              Connect with peers, join support groups, or reach out to mental
+              health professionals for guidance and help. Find chat rooms,
+              forums, and contact information for counselors.
+            </p>
+          </header>
+          <hr class="support-hr" />
+
+          <!-- Video Call Support Section -->
+          <section class="support-section">
+            <h3 class="accent support-subtitle">🎥 Live Video Support</h3>
+            <div class="video-support-container">
+              <div class="video-call-card">
+                <div class="video-call-header">
+                  `<span class="video-call-icon"></span>
+                  <div class="video-call-info">
+                    <strong>Connect with Mental Health Professional</strong>
+                    <p>
+                      Get immediate support through secure video consultation
+                    </p>
+                  </div>
+                  <div class="therapist-status" id="therapistStatus">
+                    <span class="status-indicator offline"></span>
+                    <span class="status-text">Checking availability...</span>
+                  </div>
+                </div>
+
+                <div
+                  class="video-call-container"
+                  id="videoCallContainer"
+                  style="display: none"
+                >
+                  <div class="video-area">
+                    <video
+                      id="localVideo"
+                      autoplay
+                      muted
+                      playsinline
+                      class="local-video"
+                    ></video>
+                    <video
+                      id="remoteVideo"
+                      autoplay
+                      playsinline
+                      class="remote-video"
+                    ></video>
+                    <div class="video-overlay">
+                      <div class="call-controls">
+                        <button
+                          id="muteBtn"
+                          class="control-btn"
+                          title="Mute/Unmute"
+                        >
+                          <span class="control-icon">🎤</span>
+                        </button>
+                        <button
+                          id="videoBtn"
+                          class="control-btn"
+                          title="Video On/Off"
+                        >
+                          <span class="control-icon">📹</span>
+                        </button>
+                        <button
+                          id="endCallBtn"
+                          class="control-btn end-call"
+                          title="End Call"
+                        >
+                          <span class="control-icon">📞</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="call-info">
+                    <p id="callStatus">Connecting...</p>
+                    <p id="callDuration">00:00</p>
+                  </div>
+                </div>
+
+                <div class="video-call-actions">
+                  <button
+                    id="startCallBtn"
+                    class="btn btn-primary video-call-btn"
+                    disabled
+                  >
+                    <span class="btn-icon">📹</span>
+                    Start Video Call
+                  </button>
+                  <button id="requestCallBtn" class="btn btn-secondary">
+                    <span class="btn-icon">📞</span>
+                    Request Callback
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="support-hr" />
+
+          <!-- Other Support Options -->
+          <section class="support-section">
+            <h3 class="accent support-subtitle">💬 Other Support Options</h3>
+            <div class="support-options-grid">
+              <div class="support-option-card">
+                <span class="support-option-icon">💭</span>
+                <strong>Peer Support Groups</strong>
+                <p>
+                  Join moderated group discussions with others facing similar
+                  challenges
+                </p>
+                <button class="btn btn-outline">Join Group Chat</button>
+              </div>
+              <div class="support-option-card">
+                <span class="support-option-icon">📝</span>
+                <strong>Professional Counseling</strong>
+                <p>
+                  Schedule appointments with licensed mental health
+                  professionals
+                </p>
+                <button class="btn btn-outline">Book Appointment</button>
+              </div>
+              <div class="support-option-card">
+                <span class="support-option-icon">�</span>
+                <strong>Chat with Therapists</strong>
+                <p>Connect and communicate directly with licensed therapists</p>
+                <button class="btn btn-outline" onclick="showSection('chat')">
+                  Start Chat
+                </button>
+              </div>
+            </div>
+          </section>
+        </section>
+        <section id="profile" class="content-section content-section-hidden">
+          <header class="profile-header">
+            <h2 class="title accent profile-title">Your Profile</h2>
+            <p class="profile-desc">
+              Manage your personal information, track your mental health
+              journey, and customize your experience.
+            </p>
+          </header>
+          <hr class="profile-hr" />
+
+          <div class="profile-container">
+            <!-- Profile Image Section -->
+            <div class="profile-image-section">
+              <div class="profile-image-container">
+                <img
+                  id="profileImage"
+                  src="../assets/profile-pictures/default-avatar.svg"
+                  alt="Profile Picture"
+                  class="profile-image"
+                  onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiNGMEYwRjAiLz4KPGNpcmNsZSBjeD0iMzAiIGN5PSIyMyIgcj0iMTAiIGZpbGw9IiM5OTk5OTkiLz4KPHBhdGggZD0iTTEwIDUwQzEwIDQwIDIwIDMzIDMwIDMzUzUwIDQwIDUwIDUwIiBmaWxsPSIjOTk5OTk5Ii8+Cjwvc3ZnPgo='"
+                />
+                <div class="profile-image-overlay">
+                  <label for="imageUpload" class="upload-btn">
+                    <span class="upload-icon">📷</span>
+                    Change Photo
+                  </label>
+                  <input
+                    type="file"
+                    id="imageUpload"
+                    accept="image/*"
+                    style="display: none"
+                  />
+                </div>
+              </div>
+              <div class="profile-status">
+                <span class="status-indicator online"></span>
+                <span class="status-text">Active</span>
+              </div>
+            </div>
+
+            <!-- Profile Information Form -->
+            <div class="profile-form-section">
+              <form id="profileForm" class="profile-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="firstName">First Name</label>
+                    <input
+                      type="text"
+                      id="firstName"
+                      name="firstName"
+                      placeholder="Enter your first name"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="lastName">Last Name</label>
+                    <input
+                      type="text"
+                      id="lastName"
+                      name="lastName"
+                      placeholder="Enter your last name"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      placeholder="your.email@example.com"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      placeholder="+254 700 000 000"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="dateOfBirth">Date of Birth</label>
+                    <input type="date" id="dateOfBirth" name="dateOfBirth" />
+                  </div>
+                  <div class="form-group">
+                    <label for="gender">Gender</label>
+                    <select id="gender" name="gender">
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                      <option value="prefer-not-to-say">
+                        Prefer not to say
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group full-width">
+                  <label for="location">Location</label>
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    placeholder="City, Kenya"
+                  />
+                </div>
+
+                <div class="form-group full-width">
+                  <label for="bio">About Me</label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    rows="4"
+                    placeholder="Tell us a bit about yourself and your mental health journey..."
+                  ></textarea>
+                </div>
+
+                <!-- Mental Health Specific Fields -->
+                <div class="mental-health-section">
+                  <h3 class="section-subtitle accent">
+                    Mental Health Information
+                  </h3>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="emergencyContact">Emergency Contact</label>
+                      <input
+                        type="text"
+                        id="emergencyContact"
+                        name="emergencyContact"
+                        placeholder="Name and phone number"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="preferredLanguage">Preferred Language</label>
+                      <select id="preferredLanguage" name="preferredLanguage">
+                        <option value="english">English</option>
+                        <option value="swahili">Swahili</option>
+                        <option value="kikuyu">Kikuyu</option>
+                        <option value="luo">Luo</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-group full-width">
+                    <label for="concerns">Primary Mental Health Concerns</label>
+                    <div class="checkbox-group">
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="concerns"
+                          value="anxiety"
+                        />
+                        Anxiety
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="concerns"
+                          value="depression"
+                        />
+                        Depression
+                      </label>
+                      <label class="checkbox-label">
+                        <input type="checkbox" name="concerns" value="stress" />
+                        Stress Management
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="concerns"
+                          value="relationships"
+                        />
+                        Relationships
+                      </label>
+                      <label class="checkbox-label">
+                        <input type="checkbox" name="concerns" value="trauma" />
+                        Trauma
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="concerns"
+                          value="addiction"
+                        />
+                        Addiction
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="form-group full-width">
+                    <label for="goals">My Mental Health Goals</label>
+                    <textarea
+                      id="goals"
+                      name="goals"
+                      rows="3"
+                      placeholder="What would you like to achieve through this platform?..."
+                    ></textarea>
+                  </div>
+                </div>
+
+                <!-- Privacy Settings -->
+                <div class="privacy-section">
+                  <h3 class="section-subtitle accent">Privacy Settings</h3>
+
+                  <div class="form-group full-width">
+                    <label class="checkbox-label privacy-option">
+                      <input type="checkbox" name="shareProgress" checked />
+                      Share my progress with mental health professionals
+                    </label>
+                    <label class="checkbox-label privacy-option">
+                      <input
+                        type="checkbox"
+                        name="emailNotifications"
+                        checked
+                      />
+                      Receive email notifications for appointments
+                    </label>
+                    <label class="checkbox-label privacy-option">
+                      <input type="checkbox" name="smsReminders" /> Receive SMS
+                      reminders
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="resetForm()"
+                  >
+                    Reset
+                  </button>
+                  <button type="submit" class="btn btn-primary">
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Profile Statistics -->
+          <div class="profile-stats">
+            <h3 class="section-subtitle accent">Your Journey</h3>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-number">0</span>
+                <span class="stat-label">Days Active</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number">0</span>
+                <span class="stat-label">Sessions Completed</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number">0</span>
+                <span class="stat-label">Mood Entries</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number">0</span>
+                <span class="stat-label">Goals Achieved</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Stats Management -->
+          <div class="profile-form-section">
+            <h3 class="section-subtitle accent">Track Your Progress</h3>
+            <form id="userStatsForm" class="profile-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="userDaysActive">Days Active</label>
+                  <input
+                    type="number"
+                    id="userDaysActive"
+                    name="daysActive"
+                    min="0"
+                    placeholder="Update days active"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="userSessionsCompleted">Sessions Completed</label>
+                  <input
+                    type="number"
+                    id="userSessionsCompleted"
+                    name="sessionsCompleted"
+                    min="0"
+                    placeholder="Update sessions completed"
+                  />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="userMoodEntries">Mood Entries</label>
+                  <input
+                    type="number"
+                    id="userMoodEntries"
+                    name="moodEntries"
+                    min="0"
+                    placeholder="Update mood entries"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="userGoalsAchieved">Goals Achieved</label>
+                  <input
+                    type="number"
+                    id="userGoalsAchieved"
+                    name="goalsAchieved"
+                    min="0"
+                    placeholder="Update goals achieved"
+                  />
+                </div>
+              </div>
+              <button type="submit" class="submit-btn">Update Progress</button>
+            </form>
+          </div>
+        </section>
+
+        <!-- Chat Section -->
+        <section id="chat" class="content-section content-section-hidden">
+          <header class="chat-header">
+            <h2 class="title accent chat-title">Chat with Therapists</h2>
+            <p class="chat-desc">
+              Connect and communicate directly with licensed mental health
+              professionals for personalized support and guidance.
+            </p>
+          </header>
+          <hr class="chat-hr" />
+
+          <div class="chat-container">
+            <!-- Therapists List -->
+            <div class="therapists-list">
+              <h3>Available Therapists</h3>
+              <div class="therapist-list-container" id="therapistsList">
+                <!-- Therapists will be loaded dynamically -->
+                <div class="loading-message">Loading therapists...</div>
+              </div>
+            </div>
+
+            <!-- Chat Interface -->
+            <div class="chat-interface">
+              <div class="chat-window" id="chatWindow">
+                <div class="chat-messages" id="chatMessages">
+                  <div class="welcome-message">
+                    <div class="message system-message">
+                      <div class="message-content">
+                        <p>
+                          Welcome to the therapist chat! Please select a
+                          therapist from the left to start your conversation.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                  <input
+                    type="text"
+                    id="messageInput"
+                    placeholder="Type your message here..."
+                    disabled
+                  />
+                  <button id="sendButton" class="send-btn" disabled>
+                    <i class="fa-solid fa-paper-plane"></i>
+                  </button>
+                </div>
+                <div class="chat-status" id="chatStatus">
+                  Select a therapist to start chatting
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <!-- Footer -->
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- Organized JavaScript Files -->
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/video-call.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Therapist Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="navbar-logo">
+        <span class="logo-main">MENTAL</span
+        ><span class="logo-accent accent">HEALTH</span>
+      </div>
+      <div class="navbar-actions">
+        <button
+          onclick="showTherapistNotifications()"
+          class="btn btn-profile"
+          title="Messages from Users"
+          style="position: relative"
+        >
+          <!-- Notification Bell Icon -->
+          <i class="fa-solid fa-envelope" style="font-size: 20px"></i>
+          <!-- Notification Badge -->
+          <span
+            id="therapist-notification-badge"
+            class="notification-badge"
+            style="display: none"
+            >0</span
+          >
+        </button>
+        <button
+          onclick="location.href='profile.html'"
+          class="btn btn-profile"
+          title="Profile"
+        >
+          <!-- Profile SVG Icon -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <circle cx="12" cy="8" r="4" />
+            <path d="M12 14c-5 0-8 2.5-8 5v1h16v-1c0-2.5-3-5-8-5z" />
+          </svg>
+        </button>
+        <button onclick="logout()" class="btn btn-logout">Logout</button>
+      </div>
+    </nav>
+    <div class="dashboard-container">
+      <aside class="sidebar">
+        <div class="sidebar-profile">
+          <div class="sidebar-profile-image">
+            <img
+              id="sidebarProfileImage"
+              src="../assets/profile-pictures/default-avatar.svg"
+              alt="Profile Picture"
+              class="sidebar-profile-img"
+              onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiNGMEYwRjAiLz4KPGNpcmNsZSBjeD0iMzAiIGN5PSIyMyIgcj0iMTAiIGZpbGw9IiM5OTk5OTkiLz4KPHBhdGggZD0iTTEwIDUwQzEwIDQwIDIwIDMzIDMwIDMzUzUwIDQwIDUwIDUwIiBmaWxsPSIjOTk5OTk5Ii8+Cjwvc3ZnPgo='"
+            />
+          </div>
+          <div class="sidebar-profile-info">
+            <h4 class="sidebar-profile-name" id="sidebarUserName">Therapist</h4>
+            <p class="sidebar-profile-status" id="sidebarWelcomeMessage">
+              Welcome back!
+            </p>
+          </div>
+        </div>
+        <hr class="sidebar-divider" />
+        <ul>
+          <li>
+            <a href="#dashboard" onclick="showSection('dashboard')">
+              <i class="fas fa-chart-line"></i>
+              Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="#mood" onclick="showSection('mood')">
+              <i class="fas fa-heart"></i>
+              Mood Tracking Tools
+            </a>
+          </li>
+          <li>
+            <a href="#support" onclick="showSection('support')">
+              <i class="fas fa-video"></i>
+              Peer & Professional Support
+            </a>
+          </li>
+          <li>
+            <a href="#chat" onclick="showSection('chat')">
+              <i class="fa-solid fa-comments"></i>
+              Chat with Users
+            </a>
+          </li>
+          <li>
+            <a href="#profile" onclick="showSection('profile')">
+              <i class="fas fa-user-cog"></i>
+              Profile
+            </a>
+          </li>
+        </ul>
+      </aside>
+      <main class="main-content">
+        <section id="mood" class="content-section">
+          <h2>Mood Tracking Tools</h2>
+          <p>
+            Track your mood daily to identify patterns and triggers. Use our
+            integrated mood tracker or download recommended apps to monitor your
+            emotional well-being.
+          </p>
+          <button onclick="alert('Mood tracker coming soon!')">
+            Open Mood Tracker
+          </button>
+        </section>
+        <section id="support" class="content-section content-section-hidden">
+          <header class="support-header">
+            <h2 class="title accent support-title">Therapist Support Center</h2>
+            <p class="support-desc">
+              Manage and provide professional support to users through video
+              consultations and chat support.
+            </p>
+          </header>
+          <hr class="support-hr" />
+
+          <!-- Therapist Video Call Interface -->
+          <section class="support-section">
+            <h3 class="accent support-subtitle">🎥 Video Support Dashboard</h3>
+            <div class="therapist-video-container">
+              <div class="therapist-status-panel">
+                <div class="status-controls">
+                  <label class="status-toggle">
+                    <input type="checkbox" id="therapistAvailableToggle" />
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">Available for Video Calls</span>
+                  </label>
+                  <div class="current-status">
+                    <span
+                      class="therapist-status-indicator offline"
+                      id="therapistStatusIndicator"
+                    ></span>
+                    <span id="therapistStatusText">Offline</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="incoming-calls-panel">
+                <h4>📞 Incoming Call Requests</h4>
+                <div id="incomingCallsList" class="incoming-calls-list">
+                  <p class="no-calls">No incoming calls</p>
+                </div>
+              </div>
+
+              <div
+                class="active-call-panel"
+                id="therapistVideoCallContainer"
+                style="display: none"
+              >
+                <h4>🎥 Active Video Call</h4>
+                <div class="therapist-video-area">
+                  <video
+                    id="therapistLocalVideo"
+                    autoplay
+                    muted
+                    playsinline
+                    class="therapist-local-video"
+                  ></video>
+                  <video
+                    id="therapistRemoteVideo"
+                    autoplay
+                    playsinline
+                    class="therapist-remote-video"
+                  ></video>
+                  <div class="therapist-video-overlay">
+                    <div class="therapist-call-info">
+                      <p id="therapistCallUserInfo">User: Anonymous</p>
+                      <p id="therapistCallDuration">00:00</p>
+                    </div>
+                    <div class="therapist-call-controls">
+                      <button
+                        id="therapistMuteBtn"
+                        class="control-btn"
+                        title="Mute/Unmute"
+                      >
+                        <span class="control-icon">🎤</span>
+                      </button>
+                      <button
+                        id="therapistVideoBtn"
+                        class="control-btn"
+                        title="Video On/Off"
+                      >
+                        <span class="control-icon">📹</span>
+                      </button>
+                      <button
+                        id="therapistEndCallBtn"
+                        class="control-btn end-call"
+                        title="End Call"
+                      >
+                        <span class="control-icon">📞</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="support-hr" />
+
+          <!-- Support Statistics -->
+          <section class="support-section">
+            <h3 class="accent support-subtitle">📊 Support Statistics</h3>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-number" id="totalCallsToday">0</span>
+                <span class="stat-label">Calls Today</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number" id="averageCallDuration">0m</span>
+                <span class="stat-label">Avg. Duration</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number" id="waitingUsers">0</span>
+                <span class="stat-label">Users Waiting</span>
+              </div>
+            </div>
+          </section>
+        </section>
+        <section id="profile" class="content-section content-section-hidden">
+          <header class="profile-header">
+            <h2 class="title accent profile-title">Therapist Profile</h2>
+            <p class="profile-desc">
+              Manage your professional profile, credentials, and therapeutic
+              settings for the mental health platform.
+            </p>
+          </header>
+          <hr class="profile-hr" />
+
+          <div class="profile-container">
+            <!-- Therapist Profile Image Section -->
+            <div class="profile-image-section">
+              <div class="profile-image-container">
+                <img
+                  id="therapistProfileImage"
+                  src="../assets/profile-pictures/default-admin-avatar.svg"
+                  alt="Therapist Profile Picture"
+                  class="profile-image"
+                />
+                <div class="profile-image-overlay">
+                  <label for="therapistImageUpload" class="upload-btn">
+                    <span class="upload-icon">📷</span>
+                    Change Photo
+                  </label>
+                  <input
+                    type="file"
+                    id="therapistImageUpload"
+                    accept="image/*"
+                    style="display: none"
+                  />
+                </div>
+              </div>
+              <div class="therapist-badge">
+                <span class="badge-icon">👨‍⚕️</span>
+                <span class="badge-text">Mental Health Professional</span>
+              </div>
+            </div>
+
+            <!-- Therapist Profile Information Form -->
+            <div class="profile-form-section">
+              <form id="therapistProfileForm" class="profile-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="therapistFirstName">First Name</label>
+                    <input
+                      type="text"
+                      id="therapistFirstName"
+                      name="firstName"
+                      placeholder="Dr. John"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="therapistLastName">Last Name</label>
+                    <input
+                      type="text"
+                      id="therapistLastName"
+                      name="lastName"
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="therapistEmail">Professional Email</label>
+                    <input
+                      type="email"
+                      id="therapistEmail"
+                      name="email"
+                      placeholder="dr.doe@hospital.co.ke"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="therapistPhone">Professional Phone</label>
+                    <input
+                      type="tel"
+                      id="therapistPhone"
+                      name="phone"
+                      placeholder="+254 700 000 000"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="licenseNumber">License Number</label>
+                    <input
+                      type="text"
+                      id="licenseNumber"
+                      name="licenseNumber"
+                      placeholder="Kenya Psychology License #"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="specialization">Specialization</label>
+                    <select id="specialization" name="specialization">
+                      <option value="">Select Specialization</option>
+                      <option value="clinical-psychology">
+                        Clinical Psychology
+                      </option>
+                      <option value="counseling-psychology">
+                        Counseling Psychology
+                      </option>
+                      <option value="psychiatry">Psychiatry</option>
+                      <option value="social-work">Clinical Social Work</option>
+                      <option value="therapy">Therapy/Counseling</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="yearsExperience">Years of Experience</label>
+                    <input
+                      type="number"
+                      id="yearsExperience"
+                      name="yearsExperience"
+                      min="0"
+                      placeholder="5"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="institution">Institution/Hospital</label>
+                    <input
+                      type="text"
+                      id="institution"
+                      name="institution"
+                      placeholder="Kenyatta National Hospital"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-group full-width">
+                  <label for="therapistBio">Professional Bio</label>
+                  <textarea
+                    id="therapistBio"
+                    name="bio"
+                    rows="4"
+                    placeholder="Brief description of your professional background, expertise, and approach to mental health care..."
+                  ></textarea>
+                </div>
+
+                <!-- Professional Credentials Section -->
+                <div class="credentials-section">
+                  <h3 class="section-subtitle accent">
+                    Professional Credentials
+                  </h3>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="education">Education</label>
+                      <input
+                        type="text"
+                        id="education"
+                        name="education"
+                        placeholder="PhD in Clinical Psychology, University of Nairobi"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="certifications">Certifications</label>
+                      <input
+                        type="text"
+                        id="certifications"
+                        name="certifications"
+                        placeholder="Certified Mental Health Professional"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-group full-width">
+                    <label for="languages">Languages Spoken</label>
+                    <div class="checkbox-group">
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="languages"
+                          value="english"
+                          checked
+                        />
+                        English
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="languages"
+                          value="swahili"
+                        />
+                        Swahili
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="languages"
+                          value="kikuyu"
+                        />
+                        Kikuyu
+                      </label>
+                      <label class="checkbox-label">
+                        <input type="checkbox" name="languages" value="luo" />
+                        Luo
+                      </label>
+                      <label class="checkbox-label">
+                        <input type="checkbox" name="languages" value="other" />
+                        Other
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="form-group full-width">
+                    <label for="specialties">Areas of Expertise</label>
+                    <div class="checkbox-group">
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="specialties"
+                          value="anxiety"
+                        />
+                        Anxiety Disorders
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="specialties"
+                          value="depression"
+                        />
+                        Depression
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="specialties"
+                          value="trauma"
+                        />
+                        Trauma & PTSD
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="specialties"
+                          value="addiction"
+                        />
+                        Addiction
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="specialties"
+                          value="family"
+                        />
+                        Family Therapy
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="specialties"
+                          value="adolescent"
+                        />
+                        Adolescent Counseling
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Availability Settings -->
+                <div class="availability-section">
+                  <h3 class="section-subtitle accent">Availability Settings</h3>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="workingHoursStart">Working Hours Start</label>
+                      <input
+                        type="time"
+                        id="workingHoursStart"
+                        name="workingHoursStart"
+                        value="08:00"
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="workingHoursEnd">Working Hours End</label>
+                      <input
+                        type="time"
+                        id="workingHoursEnd"
+                        name="workingHoursEnd"
+                        value="17:00"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-group full-width">
+                    <label for="workingDays">Working Days</label>
+                    <div class="checkbox-group">
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="workingDays"
+                          value="monday"
+                          checked
+                        />
+                        Monday
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="workingDays"
+                          value="tuesday"
+                          checked
+                        />
+                        Tuesday
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="workingDays"
+                          value="wednesday"
+                          checked
+                        />
+                        Wednesday
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="workingDays"
+                          value="thursday"
+                          checked
+                        />
+                        Thursday
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="workingDays"
+                          value="friday"
+                          checked
+                        />
+                        Friday
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="workingDays"
+                          value="saturday"
+                        />
+                        Saturday
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="workingDays"
+                          value="sunday"
+                        />
+                        Sunday
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="resetTherapistForm()"
+                  >
+                    Reset
+                  </button>
+                  <button type="submit" class="btn btn-primary">
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Therapist Statistics -->
+          <div class="profile-stats">
+            <h3 class="section-subtitle accent">Professional Stats</h3>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-number">0</span>
+                <span class="stat-label">Patients Helped</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number">0</span>
+                <span class="stat-label">Hours This Month</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number">0.0</span>
+                <span class="stat-label">Average Rating</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-number">0</span>
+                <span class="stat-label">Years on Platform</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Professional Stats Management -->
+          <div class="profile-form-section">
+            <h3 class="section-subtitle accent">Update Professional Stats</h3>
+            <form id="professionalStatsForm" class="profile-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="patientsHelped">Patients Helped</label>
+                  <input
+                    type="number"
+                    id="patientsHelped"
+                    name="patientsHelped"
+                    min="0"
+                    placeholder="Enter total patients helped"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="hoursThisMonth">Hours This Month</label>
+                  <input
+                    type="number"
+                    id="hoursThisMonth"
+                    name="hoursThisMonth"
+                    min="0"
+                    placeholder="Enter hours worked this month"
+                  />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="averageRating">Average Rating</label>
+                  <input
+                    type="number"
+                    id="averageRating"
+                    name="averageRating"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    placeholder="0.0 - 5.0"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="yearsOnPlatform">Years on Platform</label>
+                  <input
+                    type="number"
+                    id="yearsOnPlatform"
+                    name="yearsOnPlatform"
+                    min="0"
+                    step="0.1"
+                    placeholder="Automatically calculated"
+                    readonly
+                    style="background-color: #f5f5f5; cursor: not-allowed"
+                    title="This is automatically calculated based on your account creation date"
+                  />
+                </div>
+              </div>
+              <button type="submit" class="submit-btn">
+                Update Professional Stats
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <!-- Chat Section -->
+        <section id="chat" class="content-section content-section-hidden">
+          <header class="chat-header">
+            <h2 class="title accent chat-title">Chat with Users</h2>
+            <p class="chat-desc">
+              Communicate directly with your clients and provide personalized
+              support through our secure chat platform.
+            </p>
+          </header>
+          <hr class="chat-hr" />
+
+          <div class="chat-container">
+            <!-- Users List -->
+            <div class="therapists-list">
+              <h3>Active Conversations</h3>
+              <div class="therapist-list-container" id="usersList">
+                <!-- Users will be loaded dynamically -->
+                <div class="loading-message">Loading conversations...</div>
+              </div>
+            </div>
+
+            <!-- Chat Interface -->
+            <div class="chat-interface">
+              <div class="chat-window" id="chatWindow">
+                <div class="chat-messages" id="chatMessages">
+                  <div class="welcome-message">
+                    <div class="message system-message">
+                      <div class="message-content">
+                        <p>
+                          Welcome to your chat interface! Select a conversation
+                          from the left to start messaging with your clients.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                  <input
+                    type="text"
+                    id="messageInput"
+                    placeholder="Type your message here..."
+                    disabled
+                  />
+                  <button id="sendButton" class="send-btn" disabled>
+                    <i class="fa-solid fa-paper-plane"></i>
+                  </button>
+                </div>
+                <div class="chat-status" id="chatStatus">
+                  Select a conversation to start chatting
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <!-- Footer -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <!-- Organized JavaScript Files -->
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/video-call.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

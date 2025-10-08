@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mental Health Platform</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header>
+      <nav class="navbar" aria-label="Main Navigation">
+        <div class="navbar-logo">
+          <span class="logo-main">MENTAL</span
+          ><span class="logo-accent accent">HEALTH</span>
+        </div>
+        <div class="navbar-links">
+          <a href="#" class="nav-link">Home</a>
+          <a href="#about" class="nav-link">About</a>
+          <a href="#contact" class="nav-link">Contact</a>
+        </div>
+        <div class="navbar-actions">
+          <button onclick="location.href='login.html'" class="btn btn-outline">
+            Login
+          </button>
+          <button
+            onclick="location.href='register.html'"
+            class="btn btn-primary"
+          >
+            Register
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <main>
+      <section id="home" class="section hero">
+        <div class="container">
+          <!-- Background slider with blur effect -->
+          <div class="hero-slider-container">
+            <div id="hero-slider" class="hero-slider">
+              <!-- Slides will be injected here by JS -->
+            </div>
+            <!-- Navigation buttons -->
+            <button
+              type="button"
+              id="hero-prev"
+              class="hero-slider-btn hero-slider-btn-left"
+              aria-label="Previous Slide"
+            >
+              &#8592;
+            </button>
+            <button
+              type="button"
+              id="hero-next"
+              class="hero-slider-btn hero-slider-btn-right"
+              aria-label="Next Slide"
+            >
+              &#8594;
+            </button>
+          </div>
+
+          <!-- Hero content overlay -->
+          <div class="hero-content">
+            <h1 class="hero-title">Take Care of Your Mental Health</h1>
+            <p class="hero-subtitle">
+              A safe space for reflection, growth, and healing. Track your mood,
+              practice meditation, and journal your thoughts.
+            </p>
+            <div class="hero-buttons">
+              <button
+                class="btn btn-primary"
+                onclick="location.href='register.html'"
+              >
+                Get Started
+              </button>
+              <button
+                class="btn btn-secondary"
+                onclick="location.href='#contact'"
+              >
+                Contact Us
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- About Section -->
+      <section id="about" class="about-section" aria-label="About Us">
+        <div class="about-container">
+          <!-- Header Section -->
+          <div class="about-header">
+            <h2 class="about-title">About <span class="accent">Our Platform</span></h2>
+            <p class="about-subtitle">
+              Empowering mental wellness through technology, community, and compassionate care
+            </p>
+            <div class="about-divider"></div>
+          </div>
+
+          <!-- Hero Content -->
+          <div class="about-hero">
+            <div class="about-hero-content">
+              <div class="about-hero-text">
+                <h3 class="about-hero-title">Breaking Barriers in Mental Healthcare</h3>
+                <p class="about-hero-desc">
+                  Mental health challenges like stress, anxiety, and depression are rising globally, 
+                  particularly among students and young adults. Many lack access to affordable resources 
+                  due to stigma, limited awareness, or accessibility barriers.
+                </p>
+                <div class="about-stats">
+                  <div class="stat-item">
+                    <span class="stat-number">1 in 4</span>
+                    <span class="stat-label">People affected by mental health</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-number">24/7</span>
+                    <span class="stat-label">Support available</span>
+                  </div>
+                </div>
+              </div>
+              <div class="about-hero-visual">
+                <div class="hero-icon-container">
+                  <div class="hero-floating-icons">
+                    <div class="floating-icon">🧠</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mission Section -->
+          <div class="about-mission">
+            <div class="mission-content">
+              <div class="mission-text">
+                <h3 class="mission-title">Our <span class="accent">Mission</span></h3>
+                <p class="mission-desc">
+                  We bridge the gap by offering a user-friendly platform with expert-vetted resources 
+                  and interactive features that empower individuals to take charge of their mental health. 
+                  We believe in the power of community, education, and technology to make support 
+                  accessible to everyone, regardless of background or circumstance.
+                </p>
+              </div>
+              <div class="mission-highlights">
+            Our platform bridges the mental health gap through user-friendly design, expert-vetted resources, 
+            and interactive features. We harness community, education, and technology to make support 
+            accessible to everyone, regardless of background.
+            <br /><br />
+            We understand that mental health journeys are unique, and everyone
+            faces different challenges. That’s why our platform is built to be
+            flexible and inclusive, offering tools for self-reflection, goal
+            setting, and progress tracking. You can access a variety of
+            self-help resources, participate in online discussions, and receive
+            guidance from professionals—all in one place.
+            <br /><br />
+            Find articles, emergency contacts, mood tracking, and connect with others for support. 
+            Whether helping yourself or a loved one, we provide a safe space where mental health 
+            is prioritized and stigma is challenged.
+            <br /><br />
+            We invite you to explore the platform, take advantage of the
+            resources, and become part of a growing community dedicated to
+            mental wellness. Together, we can foster understanding, resilience,
+            and hope for a brighter future.
+            <br /><br />
+            Mental health is a vital part of our overall well-being, shaping how
+            we think, feel, and act. It influences how we handle stress, relate
+            to others, and make decisions. By prioritizing mental health, we can
+            lead more fulfilling lives, build stronger relationships, and better
+            cope with life’s challenges. Above all, it is important to remember
+            that seeking support is a sign of strength—not weakness.<br /><br />
+          </p>
+          <div class="about-services">
+            <h3 class="services-title">Our <span class="accent">Services</span></h3>
+            <div class="services-grid">
+              <div class="service-item">
+                <div class="service-icon">🧑‍🤝‍🧑</div>
+                <h4 class="service-title">Mental Health Awareness</h4>
+                <p class="service-desc">
+                  Learn about stress, anxiety, depression, and other mental health
+                  topics. Access articles and resources to increase understanding.
+                </p>
+              </div>
+              <div class="service-item">
+                <div class="service-icon">📞</div>
+                <h4 class="service-title">24/7 Resources & Support</h4>
+                <p class="service-desc">
+                  Find expert tips, coping strategies, and emergency contacts for
+                  immediate help. All information is vetted for accuracy.
+                </p>
+              </div>
+              <div class="service-item">
+                <div class="service-icon">📊</div>
+                <h4 class="service-title">Smart Mood Tracking</h4>
+                <p class="service-desc">
+                  Monitor your mood and well-being over time with intelligent insights
+                  to help improve your mental health journey.
+                </p>
+              </div>
+              <div class="service-item">
+                <div class="service-icon">💬</div>
+                <h4 class="service-title">Professional Support</h4>
+                <p class="service-desc">
+                  Connect with licensed professionals and peer support groups in
+                  a safe, moderated environment.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Values Section -->
+          <div class="about-values">
+            <div class="values-content">
+              <h3 class="values-title">Why Mental Health <span class="accent">Matters</span></h3>
+              <div class="values-text">
+                <p class="values-desc">
+                  Mental health is vital to our overall well-being, shaping how we think, feel, and act. 
+                  It influences stress management, relationships, and decision-making. By prioritizing 
+                  mental health, we lead more fulfilling lives and build stronger connections.
+                </p>
+                <div class="values-quote">
+                  <blockquote>
+                    "Seeking support is a sign of <strong>strength</strong>, not weakness."
+                  </blockquote>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Contact Section -->
+      <section id="contact" class="contact-section" aria-label="Contact">
+        <h2 class="title">Get <span class="accent">in</span> Touch</h2>
+        <p class="contact-desc">
+          Looking for guidance or resources? Our team is here to support you.
+          Contact us today—we’re ready to help.
+        </p>
+        <div class="contact-grid">
+          <!-- Single Horizontal Contact Card -->
+          <div class="contact-card horizontal">
+            <!-- Contact Image Section (Left Side) -->
+            
+            <!-- Contact Information Section (Middle) -->
+            <div class="contact-info-section">
+              <div class="contact-image-section">
+              <img src="../assets/contactUs.png" alt="Contact Us" class="contact-image" />
+            </div>
+              <ul class="contact-info-list">
+                <li class="contact-info-item">
+                  <span class="contact-info-icon">📧</span>
+                  <div class="contact-info-text">
+                    <span class="contact-info-label accent">Email:</span>
+                    <a
+                      href="mailto:Walter2000matsinhe@gmail.com"
+                      class="contact-info-link"
+                      >Walter2000matsinhe@gmail.com</a
+                    >
+                  </div>
+                </li>
+                <li class="contact-info-item">
+                  <span class="contact-info-icon">📞</span>
+                  <div class="contact-info-text">
+                    <span class="contact-info-label accent">Phone:</span>
+                    <a href="tel:0704991866" class="contact-info-link"
+                      >(+254) 704991866</a
+                    >
+                  </div>
+                </li>
+                <li class="contact-info-item">
+                  <span class="contact-info-icon">📍</span>
+                  <div class="contact-info-text">
+                    <span class="contact-info-label accent">Location:</span>
+                    <span class="contact-info-link">Nairobi, Rongai</span>
+                  </div>
+                </li>
+              </ul>
+              <div class="contact-social">
+                <div class="contact-social-title accent">Connect With Us</div>
+                <div class="contact-social-links">
+                  <a
+                    href="https://facebook.com"
+                    target="_blank"
+                    class="contact-social-link accent"
+                    ><i class="fa-brands fa-facebook"></i
+                  ></a>
+                  <a
+                    href="https://twitter.com"
+                    target="_blank"
+                    class="contact-social-link accent"
+                    ><i class="fa-brands fa-twitter"></i
+                  ></a>
+                  <a
+                    href="https://instagram.com"
+                    target="_blank"
+                    class="contact-social-link accent"
+                    ><i class="fa-brands fa-instagram"></i
+                  ></a>
+                  <a
+                    href="https://youtube.com"
+                    target="_blank"
+                    class="contact-social-link accent"
+                    ><i class="fa-brands fa-youtube"></i
+                  ></a>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Contact Form Section (Right Side) -->
+            <div class="contact-form-section">
+              <h3 class="contact-form-title accent">Send a Message</h3>
+              <form id="contactForm" class="contact-form">
+                <div class="form-group">
+                  <label for="name" class="form-label">Name :</label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    required
+                    class="form-input"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="email" class="form-label">Email :</label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    required
+                    class="form-input"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="message" class="form-label">Message :</label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    required
+                    class="form-input"
+                    rows="4"
+                  ></textarea>
+                </div>
+                <button type="submit" id="submitBtn" class="btn btn-primary">
+                  Send Message
+                </button>
+                <div id="formStatus" class="form-status"></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span class="title">&copy;</span>2025 MENTALHEALTH. All rights reserved.
+    </footer>
+    
+    <!-- Organized JavaScript Files -->
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/hero-slider.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>User Profile</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="navbar-logo">
+        <span class="logo-main">MENTAL</span>
+        <span class="logo-accent accent">HEALTH</span>
+      </div>
+      <div class="navbar-links">
+        <a href="#" class="nav-link">Home</a>
+        <a href="#about" class="nav-link">About</a>
+        <a href="#contact" class="nav-link">Contact</a>
+      </div>
+      <div class="navbar-actions">
+        <button
+          onclick="location.href='profile.html'"
+          class="btn btn-profile"
+          title="Profile"
+        >
+          <!-- Profile SVG Icon -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <circle cx="12" cy="8" r="4" />
+            <path d="M12 14c-5 0-8 2.5-8 5v1h16v-1c0-2.5-3-5-8-5z" />
+          </svg>
+        </button>
+        <button onclick="location.href='register.html'" class="btn btn-logout">
+          Logout
+        </button>
+      </div>
+    </nav>
+
+    <!-- Profile Section -->
+    <section id="profile" class="profile-section">
+      <div class="profile-container">
+        <h1 class="section-title">User Profile</h1>
+        <div class="profile-card">
+          <div
+            style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 1.2rem;
+              width: 180px;
+            "
+          >
+            <img
+              id="profile-picture"
+              src="../assets/hero.png"
+              alt="Profile Picture"
+              class="profile-picture"
+            />
+            <label
+              for="upload-picture"
+              style="font-size: 0.95rem; color: #555; margin-top: 0.5rem"
+              >Change picture</label
+            >
+            <input
+              type="file"
+              id="upload-picture"
+              accept="image/*"
+              style="
+                margin-top: 0.2rem;
+                border: 1px solid #00bfff;
+                border-radius: 6px;
+                padding: 0.3rem;
+                width: 100%;
+              "
+            />
+            <button
+              id="save-picture"
+              class="btn btn-primary"
+              style="margin-top: 0.5rem; width: 100%"
+            >
+              Save Picture
+            </button>
+          </div>
+          <div class="profile-info" style="margin-left: 1.5rem">
+            <h2 class="profile-name" id="profile-name">Loading...</h2>
+            <p class="profile-email" id="profile-email">Email: ...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Organized JavaScript Files -->
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

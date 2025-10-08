@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="style.css" />
+    <title>Register</title>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="navbar-logo">
+        <span class="logo-main">MENTAL</span
+        ><span class="logo-accent accent">HEALTH</span>
+      </div>
+      <div class="navbar-actions">
+        <button onclick="location.href='login.html'" class="btn btn-outline">
+          Login
+        </button>
+        <button onclick="location.href='register.html'" class="btn btn-primary">
+          Register
+        </button>
+      </div>
+    </nav>
+    <main class="login-main">
+      <div class="register-card">
+        <h2 class="register-title">Create Your Account</h2>
+        <form
+          id="registerForm"
+          class="register-form"
+          action="/api/auth/register"
+          method="POST"
+        >
+          <label for="name" class="register-label">Name</label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            class="register-input"
+            required
+          />
+
+          <label for="email" class="register-label">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            class="register-input"
+            required
+          />
+
+          <label for="password" class="register-label">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="register-input"
+            required
+          />
+
+          <label for="role" class="register-label">Register as</label>
+          <select id="role" name="role" class="register-input" required>
+            <option value="user">User</option>
+            <option value="therapist">Therapist</option>
+          </select>
+
+          <button type="submit" class="btn btn-primary register-button">
+            Register
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span class="title">&copy;</span>2025 MENTALHEALTH. All rights reserved.
+    </footer>
+
+    <!-- Organized JavaScript Files -->
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
