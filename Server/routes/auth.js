@@ -8,16 +8,78 @@ const router = express.Router();
 // Register
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(400).json({ message: "User already exists" });
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+      licenseNumber,
+      specialization,
+      yearsExperience,
+      education,
+      certifications,
+    } = req.body;
 
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({
+        message: "First name, last name, email, and password are required",
+      });
+    }
+
+    // Additional validation for therapist registration
+    if (role === "therapist") {
+      if (!licenseNumber || !specialization || !education) {
+        return res.status(400).json({
+          message:
+            "License number, specialization, and education are required for therapist registration",
+        });
+      }
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashedPassword, role });
+
+    // Create new user with appropriate registration status
+    const userData = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.toLowerCase().trim(),
+      password: hashedPassword,
+      role: role || "user",
+    };
+
+    // Add therapist-specific fields if role is therapist
+    if (role === "therapist") {
+      userData.registrationStatus = "pending";
+      userData.licenseNumber = licenseNumber;
+      userData.specialization = specialization;
+      userData.yearsExperience = yearsExperience || 0;
+      userData.education = education;
+      userData.certifications = certifications || "";
+    } else {
+      userData.registrationStatus = "active";
+    }
+
+    const user = new User(userData);
+
     await user.save();
-    res.status(201).json({ message: "User registered successfully" });
+
+    const message =
+      role === "therapist"
+        ? "Therapist application submitted successfully. Please wait for admin approval."
+        : "User registered successfully";
+
+    res.status(201).json({ message });
   } catch (err) {
+    console.error("Registration error:", err);
     res.status(500).json({ message: err.message });
   }
 });
@@ -36,6 +98,23 @@ router.post("/login", async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+    // Check if therapist registration is still pending
+    if (user.role === "therapist" && user.registrationStatus === "pending") {
+      return res.status(403).json({
+        message:
+          "Your therapist application is pending admin approval. Please wait for confirmation.",
+      });
+    }
+
+    // Check if therapist registration was rejected
+    if (user.role === "therapist" && user.registrationStatus === "rejected") {
+      return res.status(403).json({
+        message: `Your therapist application was rejected. Reason: ${
+          user.rejectionReason || "No reason provided"
+        }`,
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
@@ -58,6 +137,8 @@ router.post("/login", async (req, res) => {
       token,
       user: {
         id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
         name: user.name,
         email: user.email,
         role: user.role,

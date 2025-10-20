@@ -850,14 +850,7 @@
         </section>
         <section id="mood" class="content-section content-section-hidden">
           <h2>Mood Tracking Tools</h2>
-          <p>
-            Track your mood daily to identify patterns and triggers. Use our
-            integrated mood tracker or download recommended apps to monitor your
-            emotional well-being.
-          </p>
-          <button onclick="alert('Mood tracker coming soon!')">
-            Open Mood Tracker
-          </button>
+          <p>To do</p>
         </section>
         <section id="support" class="content-section content-section-hidden">
           <header class="support-header">
@@ -984,7 +977,7 @@
                 <button class="btn btn-outline">Book Appointment</button>
               </div>
               <div class="support-option-card">
-                <span class="support-option-icon">�</span>
+                <span class="support-option-icon">💬</span>
                 <strong>Chat with Therapists</strong>
                 <p>Connect and communicate directly with licensed therapists</p>
                 <button class="btn btn-outline" onclick="showSection('chat')">
@@ -1331,45 +1324,119 @@
           <hr class="chat-hr" />
 
           <div class="chat-container">
-            <!-- Therapists List -->
-            <div class="therapists-list">
-              <h3>Available Therapists</h3>
-              <div class="therapist-list-container" id="therapistsList">
+            <!-- Therapists Sidebar -->
+            <div class="chat-sidebar">
+              <div class="chat-sidebar-header">
+                <h3 class="sidebar-title">
+                  <i class="fa-solid fa-user-doctor"></i>
+                  Available Therapists
+                </h3>
+                <button
+                  onclick="forceRefreshTherapists()"
+                  class="btn-refresh"
+                  title="Refresh therapists list"
+                >
+                  <i class="fa-solid fa-rotate"></i>
+                </button>
+              </div>
+
+              <div class="chat-search-box">
+                <i class="fa-solid fa-search"></i>
+                <input
+                  type="text"
+                  id="chatSearchInput"
+                  placeholder="Search therapists..."
+                  class="chat-search-input"
+                />
+              </div>
+
+              <div class="conversation-list" id="therapistsList">
                 <!-- Therapists will be loaded dynamically -->
-                <div class="loading-message">Loading therapists...</div>
+                <div class="loading-message">
+                  <i class="fa-solid fa-spinner fa-spin"></i>
+                  <p>Loading therapists...</p>
+                </div>
               </div>
             </div>
 
-            <!-- Chat Interface -->
-            <div class="chat-interface">
-              <div class="chat-window" id="chatWindow">
+            <!-- Chat Main Area -->
+            <div class="chat-main">
+              <!-- Chat Header (shown when therapist selected) -->
+              <div
+                class="chat-main-header"
+                id="chatMainHeader"
+                style="display: none"
+              >
+                <div class="chat-user-info">
+                  <div class="chat-user-avatar" id="chatUserAvatar">
+                    <i class="fa-solid fa-user-doctor"></i>
+                  </div>
+                  <div class="chat-user-details">
+                    <h4 class="chat-user-name" id="chatUserName">
+                      Select a therapist
+                    </h4>
+                    <span class="chat-user-status" id="chatUserStatus">
+                      <i class="fa-solid fa-circle"></i> Offline
+                    </span>
+                  </div>
+                </div>
+                <div class="chat-header-actions">
+                  <button class="btn-icon-action" title="Video call">
+                    <i class="fa-solid fa-video"></i>
+                  </button>
+                  <button class="btn-icon-action" title="More options">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Chat Messages Area -->
+              <div class="chat-messages-area" id="chatWindow">
                 <div class="chat-messages" id="chatMessages">
-                  <div class="welcome-message">
-                    <div class="message system-message">
-                      <div class="message-content">
-                        <p>
-                          Welcome to the therapist chat! Please select a
-                          therapist from the left to start your conversation.
-                        </p>
-                      </div>
+                  <div class="chat-empty-state">
+                    <div class="empty-state-icon">
+                      <i class="fa-solid fa-comments"></i>
                     </div>
+                    <h3>Welcome to Chat</h3>
+                    <p>
+                      Select a therapist from the left to start your
+                      conversation and receive professional support.
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div class="chat-input-container">
+              <!-- Chat Input Area -->
+              <div class="chat-input-area">
+                <div
+                  class="typing-indicator-container"
+                  id="typingIndicator"
+                  style="display: none"
+                >
+                  <span class="typing-text">
+                    <i class="fa-solid fa-ellipsis"></i>
+                    <span id="typingUserName">Therapist</span> is typing...
+                  </span>
+                </div>
                 <div class="chat-input-wrapper">
+                  <button class="btn-attachment" title="Attach file" disabled>
+                    <i class="fa-solid fa-paperclip"></i>
+                  </button>
                   <input
                     type="text"
                     id="messageInput"
                     placeholder="Type your message here..."
+                    class="message-input"
                     disabled
                   />
-                  <button id="sendButton" class="send-btn" disabled>
+                  <button class="btn-emoji" title="Add emoji" disabled>
+                    <i class="fa-solid fa-face-smile"></i>
+                  </button>
+                  <button id="sendButton" class="btn-send" disabled>
                     <i class="fa-solid fa-paper-plane"></i>
                   </button>
                 </div>
-                <div class="chat-status" id="chatStatus">
+                <div class="chat-input-status" id="chatStatus">
                   Select a therapist to start chatting
                 </div>
               </div>
@@ -1392,6 +1459,7 @@
     <script src="js/charts.js"></script>
     <script src="js/notifications.js"></script>
     <script src="js/sidebar.js"></script>
+    <script src="js/chat.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

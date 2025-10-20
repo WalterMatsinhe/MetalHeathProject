@@ -5,6 +5,7 @@
 // Video Call Functionality
 class VideoCallManager {
   constructor() {
+    console.log("VideoCallManager initialized");
     this.localVideo = null;
     this.remoteVideo = null;
     this.localStream = null;
@@ -16,15 +17,129 @@ class VideoCallManager {
     this.isMuted = false;
     this.isVideoOn = true;
     this.isCallActive = false;
+    this.currentRoomId = null;
+    this.currentCallData = null;
 
     // Simulated therapist availability (in real implementation, this would be server-managed)
-    this.therapistAvailable = false;
+    // Set to true by default so users can test the video call feature
+    this.therapistAvailable = true;
     this.incomingCalls = [];
+
+    // Socket.IO connection
+    this.socket = null;
+    this.initializeSocket();
+
+    console.log("Is therapist view:", this.isTherapist);
+    console.log("Therapist available:", this.therapistAvailable);
 
     this.init();
   }
 
+  initializeSocket() {
+    // Connect to Socket.IO server
+    const serverUrl = window.location.origin; // or specify your server URL
+    this.socket = io(serverUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
+    });
+
+    this.socket.on('connect', () => {
+      console.log('Socket.IO connected:', this.socket.id);
+      this.registerUser();
+    });
+
+    this.socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected');
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error);
+    });
+
+    // Listen for incoming calls (therapist only)
+    this.socket.on('incoming-call', (data) => {
+      console.log('Incoming call received:', data);
+      this.handleIncomingCallRequest(data);
+    });
+
+    // Listen for call accepted (user only)
+    this.socket.on('call-accepted', (data) => {
+      console.log('Call accepted by therapist:', data);
+      this.onCallAccepted(data);
+    });
+
+    // Listen for call connecting
+    this.socket.on('call-connecting', (data) => {
+      console.log('Call connecting to therapist:', data);
+      this.updateCallStatus('Connecting to ' + data.therapistName + '...');
+    });
+
+    // Listen for no therapist available
+    this.socket.on('no-therapist-available', () => {
+      console.log('No therapist available');
+      alert('No therapist is currently available. Please try again later or request a callback.');
+      this.updateCallStatus('No therapist available');
+    });
+
+    // Listen for call ended
+    this.socket.on('call-ended', () => {
+      console.log('Call ended by other party');
+      this.endCall();
+    });
+
+    // Listen for therapist availability updates
+    this.socket.on('therapist-availability-update', (data) => {
+      console.log('Therapist availability updated:', data);
+      this.therapistAvailable = data.availableCount > 0;
+      this.updateUserTherapistStatus();
+    });
+
+    // WebRTC signaling
+    this.socket.on('offer', async (data) => {
+      console.log('Received offer from:', data.from);
+      await this.handleOffer(data.offer);
+    });
+
+    this.socket.on('answer', async (data) => {
+      console.log('Received answer from:', data.from);
+      await this.handleAnswer(data.answer);
+    });
+
+    this.socket.on('ice-candidate', async (data) => {
+      console.log('Received ICE candidate from:', data.from);
+      await this.handleIceCandidate(data.candidate);
+    });
+  }
+
+  registerUser() {
+    // Register with socket server
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const userType = this.isTherapist ? 'therapist' : 'user';
+    const userName = userData.name || (this.isTherapist ? 'Therapist' : 'User');
+    
+    this.socket.emit('register', {
+      userId: userData.id || 'anonymous',
+      userType: userType,
+      userName: userName
+    });
+
+    console.log('Registered as:', userType, userName);
+  }
+
   init() {
+    // Check if browser supports required APIs
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("Browser doesn't support video calls");
+      const startBtn = document.getElementById("startCallBtn");
+      if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.textContent = "Video calls not supported in this browser";
+      }
+      return;
+    }
+
     this.setupEventListeners();
     this.checkTherapistAvailability();
 
@@ -36,6 +151,8 @@ class VideoCallManager {
   }
 
   setupEventListeners() {
+    console.log("Setting up video call event listeners...");
+    
     // User dashboard event listeners
     const startCallBtn = document.getElementById("startCallBtn");
     const requestCallBtn = document.getElementById("requestCallBtn");
@@ -44,8 +161,15 @@ class VideoCallManager {
     const videoBtn = document.getElementById("videoBtn");
 
     if (startCallBtn) {
-      startCallBtn.addEventListener("click", () => this.startCall());
+      console.log("Start call button found, adding listener");
+      startCallBtn.addEventListener("click", () => {
+        console.log("Start call button clicked");
+        this.startCall();
+      });
+    } else {
+      console.warn("Start call button not found");
     }
+    
     if (requestCallBtn) {
       requestCallBtn.addEventListener("click", () => this.requestCallback());
     }
@@ -84,15 +208,16 @@ class VideoCallManager {
   }
 
   async startCall() {
-    if (!this.therapistAvailable) {
-      alert(
-        "No therapist is currently available. Please try again later or request a callback."
-      );
+    if (!this.socket || !this.socket.connected) {
+      alert('Not connected to server. Please refresh the page and try again.');
       return;
     }
 
     try {
-      // Get user media
+      // Update status to show we're requesting permissions
+      this.updateCallStatus("Requesting camera and microphone access...");
+      
+      // Get user media with proper error handling
       this.localStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
@@ -101,21 +226,59 @@ class VideoCallManager {
       const videoContainer = document.getElementById("videoCallContainer");
       this.localVideo = document.getElementById("localVideo");
 
+      if (!this.localVideo) {
+        throw new Error("Video element not found");
+      }
+
       this.localVideo.srcObject = this.localStream;
+      
+      // Ensure local video plays
+      this.localVideo.play().catch(err => {
+        console.error('Error playing local video:', err);
+      });
+      
       videoContainer.style.display = "block";
 
       this.isCallActive = true;
-      this.startCallTimer();
-      this.updateCallStatus("Connected to mental health professional");
+      this.updateCallStatus("Requesting call with therapist...");
 
       // Hide start call button
-      document.getElementById("startCallBtn").style.display = "none";
+      const startBtn = document.getElementById("startCallBtn");
+      if (startBtn) {
+        startBtn.style.display = "none";
+      }
 
-      // In a real implementation, this would establish WebRTC connection
-      this.simulateTherapistConnection();
+      // Request call via Socket.IO
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      this.socket.emit('request-call', {
+        userName: userData.name || 'Anonymous User',
+        userId: userData.id || 'anonymous'
+      });
+
+      console.log('Call request sent to server');
     } catch (error) {
       console.error("Error starting call:", error);
-      alert("Error accessing camera/microphone. Please check permissions.");
+      
+      let errorMessage = "Error accessing camera/microphone. ";
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMessage += "Please grant camera and microphone permissions in your browser settings and try again.";
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMessage += "No camera or microphone found. Please connect a device and try again.";
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        errorMessage += "Your camera or microphone is already in use by another application.";
+      } else {
+        errorMessage += "Please check your device settings and try again.";
+      }
+      
+      alert(errorMessage);
+      this.updateCallStatus("Call failed - " + error.name);
+      
+      // Show start button again
+      const startBtn = document.getElementById("startCallBtn");
+      if (startBtn) {
+        startBtn.style.display = "inline-block";
+      }
     }
   }
 
@@ -128,6 +291,262 @@ class VideoCallManager {
         this.updateCallStatus("Mental health professional joined");
       }
     }, 2000);
+  }
+
+  // Handle incoming call request (Therapist side)
+  handleIncomingCallRequest(data) {
+    const { roomId, userName, userId } = data;
+    console.log('Incoming call from:', userName, 'Room:', roomId);
+
+    // Check if this call is already in the list (prevent duplicates)
+    const existingCall = this.incomingCalls.find(call => call.roomId === roomId);
+    if (existingCall) {
+      console.log('Call already exists in queue, ignoring duplicate');
+      return;
+    }
+
+    // Store call data
+    this.currentCallData = { roomId, userName, userId };
+
+    // Add to incoming calls list
+    this.addToIncomingCalls(userName, new Date(), roomId);
+
+    // Show notification
+    if (window.Notification && Notification.permission === "granted") {
+      new Notification("Incoming Call", {
+        body: `${userName} is calling you`,
+        icon: '/assets/profile-pictures/default-avatar.svg'
+      });
+    }
+
+    // Play notification sound (optional)
+    this.playNotificationSound();
+  }
+
+  playNotificationSound() {
+    // Create a simple beep sound
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    gainNode.gain.value = 0.3;
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.2);
+  }
+
+  // Accept incoming call (Therapist side)
+  async acceptCall(userName, roomId) {
+    console.log('Accepting call from:', userName, 'Room:', roomId);
+    
+    // Remove from incoming calls list
+    this.removeFromIncomingCalls(roomId);
+    
+    try {
+      // Get therapist's media stream
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      const therapistVideoContainer = document.getElementById("therapistVideoCallContainer");
+      const therapistLocalVideo = document.getElementById("therapistLocalVideo");
+
+      if (!therapistLocalVideo) {
+        throw new Error("Therapist video element not found");
+      }
+
+      therapistLocalVideo.srcObject = this.localStream;
+      
+      // Ensure therapist local video plays
+      therapistLocalVideo.play().catch(err => {
+        console.error('Error playing therapist local video:', err);
+      });
+      
+      therapistVideoContainer.style.display = "block";
+
+      this.isCallActive = true;
+      this.currentRoomId = roomId;
+      this.startCallTimer();
+
+      // Update therapist call info
+      const callInfo = document.getElementById("therapistCallUserInfo");
+      if (callInfo) {
+        callInfo.textContent = `User: ${userName}`;
+      }
+
+      // Update call status
+      const callStatus = document.getElementById("therapistCallStatus");
+      if (callStatus) {
+        callStatus.textContent = `Connected with ${userName}`;
+      }
+
+      // Accept call via Socket.IO
+      this.socket.emit('accept-call', { roomId });
+
+      // Initialize WebRTC peer connection
+      await this.createPeerConnection(roomId);
+      await this.createAndSendOffer(roomId);
+
+      console.log('Call accepted, WebRTC negotiation started');
+    } catch (error) {
+      console.error("Error accepting call:", error);
+      alert("Error accessing camera/microphone. Please check permissions.");
+    }
+  }
+
+  // Called when therapist accepts the call (User side)
+  async onCallAccepted(data) {
+    const { roomId } = data;
+    console.log('Therapist accepted call, room:', roomId);
+    
+    this.currentRoomId = roomId;
+    this.updateCallStatus("Therapist joined - Connecting...");
+    this.startCallTimer();
+
+    // Initialize WebRTC peer connection
+    await this.createPeerConnection(roomId);
+  }
+
+  // Create WebRTC peer connection
+  async createPeerConnection(roomId) {
+    const configuration = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    this.peerConnection = new RTCPeerConnection(configuration);
+    console.log('WebRTC peer connection created');
+
+    // Add local stream to peer connection
+    this.localStream.getTracks().forEach(track => {
+      this.peerConnection.addTrack(track, this.localStream);
+      console.log('Added track to peer connection:', track.kind);
+    });
+
+    // Handle incoming remote stream
+    this.peerConnection.ontrack = (event) => {
+      console.log('Received remote track:', event.track.kind);
+      
+      // Use the first stream from the event
+      if (event.streams && event.streams[0]) {
+        const remoteVideo = this.isTherapist 
+          ? document.getElementById("therapistRemoteVideo")
+          : document.getElementById("remoteVideo");
+        
+        if (remoteVideo) {
+          remoteVideo.srcObject = event.streams[0];
+          this.remoteStream = event.streams[0];
+          console.log('Remote video stream connected:', event.streams[0].id);
+          
+          // Ensure video plays
+          remoteVideo.play().then(() => {
+            console.log('Remote video is playing');
+          }).catch(err => {
+            console.error('Error playing remote video:', err);
+            // Try to play again after a short delay
+            setTimeout(() => {
+              remoteVideo.play().catch(e => console.error('Retry failed:', e));
+            }, 500);
+          });
+          
+          // Log track states
+          event.streams[0].getTracks().forEach(track => {
+            console.log(`Remote ${track.kind} track - enabled: ${track.enabled}, muted: ${track.muted}, readyState: ${track.readyState}`);
+          });
+        } else {
+          console.error('Remote video element not found!');
+        }
+      }
+    };
+
+    // Handle ICE candidates
+    this.peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log('Sending ICE candidate');
+        this.socket.emit('ice-candidate', {
+          roomId: roomId,
+          candidate: event.candidate
+        });
+      }
+    };
+
+    // Handle connection state changes
+    this.peerConnection.onconnectionstatechange = () => {
+      console.log('Connection state:', this.peerConnection.connectionState);
+      if (this.peerConnection.connectionState === 'connected') {
+        this.updateCallStatus('Connected');
+      } else if (this.peerConnection.connectionState === 'disconnected') {
+        this.updateCallStatus('Disconnected');
+      } else if (this.peerConnection.connectionState === 'failed') {
+        this.updateCallStatus('Connection failed');
+        alert('Connection failed. Please try again.');
+        this.endCall();
+      }
+    };
+  }
+
+  // Create and send offer (Therapist initiates)
+  async createAndSendOffer(roomId) {
+    try {
+      const offer = await this.peerConnection.createOffer();
+      await this.peerConnection.setLocalDescription(offer);
+      
+      console.log('Sending offer to room:', roomId);
+      this.socket.emit('offer', {
+        roomId: roomId,
+        offer: offer
+      });
+    } catch (error) {
+      console.error('Error creating offer:', error);
+    }
+  }
+
+  // Handle received offer (User side)
+  async handleOffer(offer) {
+    try {
+      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+      console.log('Remote description set from offer');
+      
+      const answer = await this.peerConnection.createAnswer();
+      await this.peerConnection.setLocalDescription(answer);
+      
+      console.log('Sending answer to room:', this.currentRoomId);
+      this.socket.emit('answer', {
+        roomId: this.currentRoomId,
+        answer: answer
+      });
+    } catch (error) {
+      console.error('Error handling offer:', error);
+    }
+  }
+
+  // Handle received answer (Therapist side)
+  async handleAnswer(answer) {
+    try {
+      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      console.log('Remote description set from answer');
+      this.updateCallStatus('Connected');
+    } catch (error) {
+      console.error('Error handling answer:', error);
+    }
+  }
+
+  // Handle received ICE candidate
+  async handleIceCandidate(candidate) {
+    try {
+      await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      console.log('ICE candidate added');
+    } catch (error) {
+      console.error('Error adding ICE candidate:', error);
+    }
   }
 
   async handleIncomingCall() {
@@ -159,14 +578,37 @@ class VideoCallManager {
   }
 
   endCall() {
+    console.log('Ending call...');
+    
+    // Stop all tracks
     if (this.localStream) {
-      this.localStream.getTracks().forEach((track) => track.stop());
+      this.localStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log('Stopped local track:', track.kind);
+      });
     }
     if (this.remoteStream) {
-      this.remoteStream.getTracks().forEach((track) => track.stop());
+      this.remoteStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log('Stopped remote track:', track.kind);
+      });
+    }
+
+    // Close peer connection
+    if (this.peerConnection) {
+      this.peerConnection.close();
+      this.peerConnection = null;
+      console.log('Peer connection closed');
+    }
+
+    // Notify server
+    if (this.socket && this.currentRoomId) {
+      this.socket.emit('end-call', { roomId: this.currentRoomId });
     }
 
     this.isCallActive = false;
+    this.currentRoomId = null;
+    this.currentCallData = null;
     this.stopCallTimer();
 
     // Hide video containers
@@ -188,6 +630,7 @@ class VideoCallManager {
     }
 
     this.updateCallStatus("Call ended");
+    console.log('Call ended successfully');
   }
 
   toggleMute() {
@@ -237,11 +680,11 @@ class VideoCallManager {
     );
 
     // Add to therapist's incoming calls list (simulation)
-    this.addToIncomingCalls("Anonymous User", new Date());
+    this.addToIncomingCalls("Anonymous User", new Date(), null);
   }
 
-  addToIncomingCalls(username, time) {
-    this.incomingCalls.push({ username, time });
+  addToIncomingCalls(username, time, roomId) {
+    this.incomingCalls.push({ username, time, roomId });
     this.updateIncomingCallsList();
   }
 
@@ -256,23 +699,30 @@ class VideoCallManager {
         .map(
           (call) => `
         <div class="incoming-call-item">
-          <span class="call-user">${call.username}</span>
-          <span class="call-time">${call.time.toLocaleTimeString()}</span>
-          <button class="btn btn-small" onclick="videoCallManager.acceptCall('${
-            call.username
-          }')">Accept</button>
+          <div class="call-info">
+            <span class="call-user">📞 ${call.username}</span>
+            <span class="call-time">${call.time.toLocaleTimeString()}</span>
+          </div>
+          <button class="btn btn-small btn-accept" onclick="videoCallManager.acceptCall('${call.username}', '${call.roomId}')">
+            <i class="fas fa-phone"></i> Accept
+          </button>
         </div>
       `
         )
         .join("");
     }
+
+    // Update waiting users count
+    const waitingUsersElement = document.getElementById("waitingUsers");
+    if (waitingUsersElement) {
+      waitingUsersElement.textContent = this.incomingCalls.length;
+    }
   }
 
-  acceptCall(username) {
-    this.handleIncomingCall();
-    // Remove from incoming calls
+  // Remove call from incoming calls list after accepting
+  removeFromIncomingCalls(roomId) {
     this.incomingCalls = this.incomingCalls.filter(
-      (call) => call.username !== username
+      (call) => call.roomId !== roomId
     );
     this.updateIncomingCallsList();
   }
@@ -292,6 +742,12 @@ class VideoCallManager {
       }
     }
 
+    // Notify server of availability change
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('toggle-therapist-availability', available);
+      console.log('Therapist availability set to:', available);
+    }
+
     // Update user dashboard status
     this.updateUserTherapistStatus();
   }
@@ -308,13 +764,19 @@ class VideoCallManager {
             <span class="status-indicator online"></span>
             <span class="status-text">Therapist available</span>
           `;
-          if (startBtn) startBtn.disabled = false;
+          if (startBtn) {
+            startBtn.disabled = false;
+            console.log("Start call button enabled");
+          }
         } else {
           status.innerHTML = `
             <span class="status-indicator offline"></span>
             <span class="status-text">Therapist offline</span>
           `;
-          if (startBtn) startBtn.disabled = true;
+          if (startBtn) {
+            startBtn.disabled = true;
+            console.log("Start call button disabled - no therapist available");
+          }
         }
       }
     }, 1000);
@@ -396,10 +858,4 @@ class VideoCallManager {
   }
 }
 
-// Initialize video call functionality
-function initializeVideoCall() {
-  // Only initialize if we're on a dashboard page
-  if (window.location.pathname.includes("Dashboard.html")) {
-    window.videoCallManager = new VideoCallManager();
-  }
-}
+// Note: VideoCallManager is initialized in main.js to prevent duplicate instances

@@ -25,15 +25,22 @@ class ProfileAPI {
 
   static async updateProfile(profileData) {
     try {
+      const headers = getAuthHeaders();
+      console.log("Sending profile update with headers:", headers);
+      console.log("Profile data:", profileData);
+
       const response = await fetch("/api/profile/", {
         method: "PUT",
         credentials: "include",
-        headers: getAuthHeaders(),
+        headers: headers,
         body: JSON.stringify(profileData),
       });
 
+      console.log("Profile update response status:", response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Profile update error response:", errorData);
         throw new Error(errorData.message || "Failed to update profile");
       }
 
@@ -141,47 +148,51 @@ async function handleImageUpload(event, imageElement) {
     // Show loading state
     showNotification("Uploading profile image...", "info");
 
-    // Create a local preview URL
+    // Create a local preview URL for immediate feedback
     const reader = new FileReader();
     reader.onload = function (e) {
-      const imageSrc = e.target.result;
-
-      // Update main profile image
-      imageElement.src = imageSrc;
-
-      // Update sidebar profile image immediately
-      updateSidebarProfile(imageSrc);
-
-      // Store in localStorage for persistence
-      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
-      userData.profileImage = imageSrc;
-      localStorage.setItem("userData", JSON.stringify(userData));
-
-      // Debug log to verify storage
-      console.log(
-        "Image uploaded and stored in localStorage:",
-        userData.profileImage ? "YES" : "NO"
-      );
-
-      // Force update sidebar profile after storage
-      setTimeout(() => {
-        const sidebarImg = document.getElementById("sidebarProfileImage");
-        if (sidebarImg) {
-          sidebarImg.src = imageSrc;
-          console.log("Sidebar image forcefully updated");
-        }
-      }, 100);
+      // Update main profile image immediately for UX
+      imageElement.src = e.target.result;
     };
     reader.readAsDataURL(file);
 
-    // Upload to server (simulated - replace with actual API call)
-    // const result = await ProfileAPI.uploadProfileImage(file);
-    // imageElement.src = result.profilePictureUrl;
-    // updateSidebarProfile(result.profilePictureUrl);
+    // Upload to server and save to database
+    console.log("Starting upload to server...");
+    const result = await ProfileAPI.uploadProfileImage(file);
+    console.log("Upload result:", result);
 
-    showNotification("Profile image updated successfully!", "success");
+    if (result && result.profilePictureUrl) {
+      // Update with the actual server URL
+      const serverImageUrl = result.profilePictureUrl;
+      imageElement.src = serverImageUrl;
+
+      // Update sidebar profile image
+      updateSidebarProfile(serverImageUrl);
+
+      // Update localStorage with the server URL
+      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      userData.profilePicture = serverImageUrl;
+      localStorage.setItem("userData", JSON.stringify(userData));
+
+      // Force update sidebar profile
+      setTimeout(() => {
+        const sidebarImg = document.getElementById("sidebarProfileImage");
+        if (sidebarImg) {
+          sidebarImg.src = serverImageUrl;
+          console.log("Sidebar image updated with server URL:", serverImageUrl);
+        }
+      }, 100);
+
+      showNotification("Profile image updated successfully!", "success");
+    } else {
+      throw new Error("No image URL returned from server");
+    }
   } catch (error) {
+    console.error("Image upload error:", error);
     showNotification(error.message || "Failed to upload image", "error");
+
+    // Reset the image on error
+    loadUserProfileData();
   }
 }
 
@@ -662,15 +673,102 @@ document.addEventListener("DOMContentLoaded", function () {
   if (checkAuthentication()) {
     initializeProfileImageUpload();
     initializeProfileForms();
+    initializeSimpleProfilePage();
 
     // Load profile data to populate sidebar with real user information
     if (window.location.pathname.includes("userDashboard")) {
       loadUserProfileData();
     } else if (window.location.pathname.includes("therapistDashboard")) {
       loadTherapistProfileData();
+    } else if (window.location.pathname.includes("profile.html")) {
+      loadSimpleProfileData();
     }
   }
 
   // Initialize dashboard functionality
   initializeDashboard();
 });
+
+// Initialize simple profile page (profile.html)
+function initializeSimpleProfilePage() {
+  const savePictureBtn = document.getElementById("save-picture");
+  const uploadPictureInput = document.getElementById("upload-picture");
+  const profilePicture = document.getElementById("profile-picture");
+
+  if (savePictureBtn && uploadPictureInput) {
+    savePictureBtn.addEventListener("click", async function () {
+      const file = uploadPictureInput.files[0];
+      if (!file) {
+        showToast("Please select an image first", "error");
+        return;
+      }
+
+      try {
+        showToast("Uploading profile picture...", "info");
+
+        // Upload to server
+        const result = await ProfileAPI.uploadProfileImage(file);
+
+        if (result && result.profilePictureUrl) {
+          // Update the profile picture display
+          if (profilePicture) {
+            profilePicture.src = result.profilePictureUrl;
+          }
+
+          // Update sidebar
+          updateSidebarProfile(result.profilePictureUrl);
+
+          // Update localStorage
+          const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+          userData.profilePicture = result.profilePictureUrl;
+          localStorage.setItem("userData", JSON.stringify(userData));
+
+          showToast("Profile picture updated successfully!", "success");
+        }
+      } catch (error) {
+        console.error("Profile picture upload error:", error);
+        showToast(error.message || "Failed to upload profile picture", "error");
+      }
+    });
+  }
+}
+
+// Load data for simple profile page
+async function loadSimpleProfileData() {
+  try {
+    const userData = await ProfileAPI.getProfile();
+
+    // Update profile picture
+    const profilePicture = document.getElementById("profile-picture");
+    if (profilePicture && userData.profilePicture) {
+      profilePicture.src = userData.profilePicture;
+    }
+
+    // Update profile name and email
+    const profileName = document.getElementById("profile-name");
+    const profileEmail = document.getElementById("profile-email");
+
+    if (profileName) {
+      const fullName = `${userData.firstName || ""} ${
+        userData.lastName || ""
+      }`.trim();
+      profileName.textContent = fullName || "User";
+    }
+
+    if (profileEmail) {
+      profileEmail.textContent = `Email: ${userData.email || ""}`;
+    }
+
+    // Update sidebar
+    const fullName = `${userData.firstName || ""} ${
+      userData.lastName || ""
+    }`.trim();
+    updateSidebarProfile(userData.profilePicture, fullName || "User");
+
+    // Store in localStorage
+    localStorage.setItem("userData", JSON.stringify(userData));
+  } catch (error) {
+    console.error("Failed to load profile data:", error);
+    showToast("Failed to load profile data", "error");
+  }
+}

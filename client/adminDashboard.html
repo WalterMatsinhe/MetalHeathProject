@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="navbar-logo">
+        <span class="logo-main">MENTAL</span
+        ><span class="logo-accent accent">HEALTH</span>
+      </div>
+      <div class="navbar-actions">
+        <button
+          onclick="showNotifications()"
+          class="btn btn-profile"
+          title="Notifications"
+          style="position: relative"
+        >
+          <i class="fa-solid fa-bell" style="font-size: 20px"></i>
+          <span
+            id="notification-badge"
+            class="notification-badge"
+            style="display: none"
+            >0</span
+          >
+        </button>
+        <button onclick="logout()" class="btn btn-logout">Logout</button>
+      </div>
+    </nav>
+
+    <div class="dashboard-container">
+      <aside class="sidebar">
+        <!-- Profile Section -->
+        <div class="sidebar-profile">
+          <div class="sidebar-profile-image">
+            <img
+              id="sidebarProfileImage"
+              src="../assets/profile-pictures/default-admin-avatar.svg"
+              alt="Admin Profile"
+              class="sidebar-profile-img"
+              onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiNGRjY3MDAiLz4KPGNpcmNsZSBjeD0iMzAiIGN5PSIyMyIgcj0iMTAiIGZpbGw9IiNGRkYiLz4KPHBhdGggZD0iTTEwIDUwQzEwIDQwIDIwIDMzIDMwIDMzUzUwIDQwIDUwIDUwIiBmaWxsPSIjRkZGIi8+Cjwvc3ZnPgo='"
+            />
+          </div>
+          <div class="sidebar-profile-info">
+            <h4 class="sidebar-profile-name" id="sidebarUserName">Admin</h4>
+            <p class="sidebar-profile-status admin-badge">
+              <i class="fa-solid fa-shield"></i> Administrator
+            </p>
+          </div>
+        </div>
+        <hr class="sidebar-divider" />
+
+        <ul>
+          <li>
+            <a href="#dashboard" onclick="showSection('dashboard')"
+              ><i class="fas fa-chart-line"></i>&nbsp; Dashboard</a
+            >
+          </li>
+          <li>
+            <a href="#pending" onclick="showSection('pending')"
+              ><i class="fa-solid fa-clock"></i>&nbsp; Pending Applications
+              <span class="badge" id="pendingBadge">0</span></a
+            >
+          </li>
+          <li>
+            <a href="#approved" onclick="showSection('approved')"
+              ><i class="fa-solid fa-check-circle"></i>&nbsp; Approved
+              Therapists</a
+            >
+          </li>
+          <li>
+            <a href="#rejected" onclick="showSection('rejected')"
+              ><i class="fa-solid fa-times-circle"></i>&nbsp; Rejected
+              Applications</a
+            >
+          </li>
+          <li>
+            <a href="#users" onclick="showSection('users')"
+              ><i class="fa-solid fa-users"></i>&nbsp; All Users</a
+            >
+          </li>
+        </ul>
+      </aside>
+
+      <main class="main-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="content-section">
+          <header class="dashboard-header">
+            <h2 class="title dashboard-title">
+              Admin <span class="accent">Dashboard</span>
+            </h2>
+            <p class="dashboard-desc">
+              Manage therapist applications, monitor platform activity, and
+              oversee user management.
+            </p>
+          </header>
+          <hr class="dashboard-hr" />
+
+          <!-- Statistics Overview -->
+          <section class="dashboard-stats">
+            <h3 class="dashboard-subtitle">Platform Statistics</h3>
+            <div class="stats-grid">
+              <div class="stat-card stat-card-blue">
+                <div class="stat-icon">👥</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="totalUsers">0</span>
+                  <span class="stat-label">Total Users</span>
+                </div>
+              </div>
+              <div class="stat-card stat-card-green">
+                <div class="stat-icon">👨‍⚕️</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="totalTherapists">0</span>
+                  <span class="stat-label">Total Therapists</span>
+                </div>
+              </div>
+              <div class="stat-card stat-card-orange">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="pendingApplications">0</span>
+                  <span class="stat-label">Pending Applications</span>
+                </div>
+              </div>
+              <div class="stat-card stat-card-purple">
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="approvedTherapists">0</span>
+                  <span class="stat-label">Approved Therapists</span>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Quick Actions -->
+          <section class="quick-actions">
+            <h3 class="dashboard-subtitle">Quick Actions</h3>
+            <div class="actions-grid">
+              <button class="action-card" onclick="showSection('pending')">
+                <div class="action-icon">
+                  <i class="fa-solid fa-clock"></i>
+                </div>
+                <div class="action-content">
+                  <h4>Review Applications</h4>
+                  <p>View and process pending therapist applications</p>
+                </div>
+              </button>
+              <button class="action-card" onclick="showSection('approved')">
+                <div class="action-icon">
+                  <i class="fa-solid fa-user-check"></i>
+                </div>
+                <div class="action-content">
+                  <h4>Approved Therapists</h4>
+                  <p>Manage currently active therapists</p>
+                </div>
+              </button>
+              <button class="action-card" onclick="refreshStatistics()">
+                <div class="action-icon">
+                  <i class="fa-solid fa-rotate"></i>
+                </div>
+                <div class="action-content">
+                  <h4>Refresh Data</h4>
+                  <p>Update dashboard statistics</p>
+                </div>
+              </button>
+            </div>
+          </section>
+        </section>
+
+        <!-- Pending Applications Section -->
+        <section id="pending" class="content-section content-section-hidden">
+          <header class="section-header">
+            <h2 class="title accent">Pending Therapist Applications</h2>
+            <p class="section-desc">
+              Review and process new therapist registration applications.
+            </p>
+          </header>
+          <hr class="dashboard-hr" />
+
+          <div class="applications-container" id="pendingApplicationsContainer">
+            <div class="loading-message">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <p>Loading applications...</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Approved Therapists Section -->
+        <section id="approved" class="content-section content-section-hidden">
+          <header class="section-header">
+            <h2 class="title accent">Approved Therapists</h2>
+            <p class="section-desc">
+              View all approved and active therapists on the platform.
+            </p>
+          </header>
+          <hr class="dashboard-hr" />
+
+          <div class="applications-container" id="approvedTherapistsContainer">
+            <div class="loading-message">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <p>Loading therapists...</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Rejected Applications Section -->
+        <section id="rejected" class="content-section content-section-hidden">
+          <header class="section-header">
+            <h2 class="title accent">Rejected Applications</h2>
+            <p class="section-desc">
+              View previously rejected therapist applications.
+            </p>
+          </header>
+          <hr class="dashboard-hr" />
+
+          <div
+            class="applications-container"
+            id="rejectedApplicationsContainer"
+          >
+            <div class="loading-message">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <p>Loading rejected applications...</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Users Section -->
+        <section id="users" class="content-section content-section-hidden">
+          <header class="section-header">
+            <h2 class="title accent">All Users</h2>
+            <p class="section-desc">
+              View and manage all users registered on the platform.
+            </p>
+          </header>
+          <hr class="dashboard-hr" />
+
+          <div class="users-container">
+            <p class="info-message">
+              <i class="fa-solid fa-info-circle"></i> User management features
+              coming soon.
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Application Details Modal -->
+    <div id="applicationModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Therapist Application Details</h3>
+          <button class="modal-close" onclick="closeApplicationModal()">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" id="applicationModalBody">
+          <!-- Application details will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Rejection Reason Modal -->
+    <div id="rejectionModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Reject Application</h3>
+          <button class="modal-close" onclick="closeRejectionModal()">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Please provide a reason for rejecting this application:</p>
+          <textarea
+            id="rejectionReason"
+            class="rejection-textarea"
+            rows="5"
+            placeholder="Enter rejection reason here..."
+          ></textarea>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeRejectionModal()">
+              Cancel
+            </button>
+            <button
+              class="btn btn-danger"
+              onclick="confirmRejection()"
+              id="confirmRejectBtn"
+            >
+              Confirm Rejection
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/admin.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

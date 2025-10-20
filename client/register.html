@@ -29,42 +29,163 @@
           action="/api/auth/register"
           method="POST"
         >
-          <label for="name" class="register-label">Name</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            class="register-input"
-            required
-          />
+          <!-- Basic Information -->
+          <div class="form-section">
+            <h3 class="form-section-title">Basic Information</h3>
 
-          <label for="email" class="register-label">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            class="register-input"
-            required
-          />
+            <label for="firstName" class="register-label">First Name *</label>
+            <input
+              type="text"
+              id="firstName"
+              name="firstName"
+              class="register-input"
+              required
+            />
 
-          <label for="password" class="register-label">Password</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            class="register-input"
-            required
-          />
+            <label for="lastName" class="register-label">Last Name *</label>
+            <input
+              type="text"
+              id="lastName"
+              name="lastName"
+              class="register-input"
+              required
+            />
 
-          <label for="role" class="register-label">Register as</label>
-          <select id="role" name="role" class="register-input" required>
-            <option value="user">User</option>
-            <option value="therapist">Therapist</option>
-          </select>
+            <label for="email" class="register-label">Email *</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              class="register-input"
+              required
+            />
+
+            <label for="password" class="register-label">Password *</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              class="register-input"
+              minlength="6"
+              required
+            />
+
+            <label for="role" class="register-label">Register as *</label>
+            <select id="role" name="role" class="register-input" required>
+              <option value="user">User (Seeking Mental Health Support)</option>
+              <option value="therapist">
+                Therapist (Mental Health Professional)
+              </option>
+            </select>
+          </div>
+
+          <!-- Therapist-Specific Fields (Hidden by default) -->
+          <div
+            id="therapistFields"
+            class="therapist-fields"
+            style="display: none"
+          >
+            <div class="form-section">
+              <h3 class="form-section-title">Professional Information</h3>
+              <p class="form-section-subtitle">
+                Please provide your professional credentials for verification
+              </p>
+
+              <label for="licenseNumber" class="register-label"
+                >Professional License Number *</label
+              >
+              <input
+                type="text"
+                id="licenseNumber"
+                name="licenseNumber"
+                class="register-input"
+                placeholder="e.g., PSY12345"
+              />
+
+              <label for="specialization" class="register-label"
+                >Specialization *</label
+              >
+              <select
+                id="specialization"
+                name="specialization"
+                class="register-input"
+              >
+                <option value="">-- Select Specialization --</option>
+                <option value="clinical-psychology">Clinical Psychology</option>
+                <option value="counseling-psychology">
+                  Counseling Psychology
+                </option>
+                <option value="psychiatry">Psychiatry</option>
+                <option value="social-work">Social Work</option>
+                <option value="therapy">General Therapy</option>
+                <option value="other">Other</option>
+              </select>
+
+              <label for="yearsExperience" class="register-label"
+                >Years of Experience *</label
+              >
+              <input
+                type="number"
+                id="yearsExperience"
+                name="yearsExperience"
+                class="register-input"
+                min="0"
+                max="50"
+                placeholder="e.g., 5"
+              />
+
+              <label for="education" class="register-label"
+                >Education & Qualifications *</label
+              >
+              <textarea
+                id="education"
+                name="education"
+                class="register-input register-textarea"
+                rows="3"
+                placeholder="e.g., PhD in Clinical Psychology, University of Example, 2015"
+              ></textarea>
+
+              <label for="institution" class="register-label"
+                >Current Institution/Practice</label
+              >
+              <input
+                type="text"
+                id="institution"
+                name="institution"
+                class="register-input"
+                placeholder="e.g., Mental Health Center of Example City"
+              />
+
+              <label for="certifications" class="register-label"
+                >Additional Certifications</label
+              >
+              <textarea
+                id="certifications"
+                name="certifications"
+                class="register-input register-textarea"
+                rows="2"
+                placeholder="e.g., Certified Cognitive Behavioral Therapist (CBT), Trauma-Informed Care Certificate"
+              ></textarea>
+            </div>
+
+            <div class="therapist-notice">
+              <i class="fa-solid fa-info-circle"></i>
+              <p>
+                <strong>Application Review:</strong> Your therapist application
+                will be reviewed by our admin team. You will receive an email
+                notification once your application has been approved or if
+                additional information is needed.
+              </p>
+            </div>
+          </div>
 
           <button type="submit" class="btn btn-primary register-button">
-            Register
+            <span id="submitButtonText">Register</span>
           </button>
+
+          <p class="register-footer">
+            Already have an account? <a href="login.html">Login here</a>
+          </p>
         </form>
       </div>
     </main>

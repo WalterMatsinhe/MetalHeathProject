@@ -2,6 +2,33 @@
 // NOTIFICATION SYSTEM
 // ============================================
 
+// Function to update notification names with real user data
+async function updateNotificationNames() {
+  try {
+    // Get real user data from conversations
+    const response = await fetch("/api/chat/conversations", {
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const conversations = await response.json();
+
+      if (conversations.length > 0) {
+        // Update the session request with real user name
+        const sessionRequestElement = document.getElementById(
+          "session-request-user"
+        );
+        if (sessionRequestElement && conversations[0]) {
+          const userName = conversations[0].name || "User";
+          sessionRequestElement.textContent = `${userName} • 30 minutes ago`;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error updating notification names:", error);
+  }
+}
+
 // Notification functionality
 let unreadNotifications = 5; // Default number of unread notifications
 
@@ -370,7 +397,7 @@ function showTherapistNotifications() {
           <div style="flex: 1;">
             <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">Video Session Request</h4>
             <p style="margin: 0; font-size: 12px; color: #666;">"Would like to schedule a session to discuss anxiety management"</p>
-            <span style="font-size: 11px; color: #999;">John D. • 30 minutes ago</span>
+            <span style="font-size: 11px; color: #999;" id="session-request-user">User • 30 minutes ago</span>
           </div>
           <div style="width: 8px; height: 8px; background: #2196f3; border-radius: 50%;"></div>
         </div>
@@ -553,5 +580,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (typeof initializeTherapistChat === "function") {
       initializeTherapistChat();
     }
+
+    // Update notification names with real data
+    setTimeout(() => {
+      updateNotificationNames();
+    }, 2000);
   }
 });

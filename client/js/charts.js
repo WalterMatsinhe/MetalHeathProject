@@ -74,7 +74,7 @@ function initMoodTrendChart() {
   }
 
   // Draw mood line
-  ctx.strokeStyle = "#05c19b";
+  ctx.strokeStyle = "#00bfff";
   ctx.lineWidth = 3;
   ctx.beginPath();
 
@@ -91,7 +91,7 @@ function initMoodTrendChart() {
   ctx.stroke();
 
   // Draw data points
-  ctx.fillStyle = "#05c19b";
+  ctx.fillStyle = "#00bfff";
   for (let i = 0; i < moodData.length; i++) {
     const x = padding + (i * chartWidth) / (moodData.length - 1);
     const y = height - padding - ((moodData[i] - 1) * chartHeight) / 4;
@@ -131,11 +131,11 @@ function initActivityChart() {
 
   // Activity data
   const activities = [
-    { name: "Meditation", hours: 5, color: "#05c19b" },
-    { name: "Exercise", hours: 8, color: "#3498db" },
-    { name: "Journaling", hours: 3, color: "#9b59b6" },
-    { name: "Therapy", hours: 4, color: "#e74c3c" },
-    { name: "Reading", hours: 6, color: "#f39c12" },
+    { name: "Meditation", hours: 5, color: "#00bfff" },
+    { name: "Exercise", hours: 8, color: "#0099cc" },
+    { name: "Journaling", hours: 3, color: "#0066cc" },
+    { name: "Therapy", hours: 4, color: "#1976d2" },
+    { name: "Reading", hours: 6, color: "#2c3e50" },
   ];
 
   // Clear canvas
@@ -225,9 +225,9 @@ function initProgressChart() {
 
   // Progress data
   const goals = [
-    { name: "Completed", value: 7, color: "#05c19b" },
-    { name: "In Progress", value: 3, color: "#f39c12" },
-    { name: "Pending", value: 2, color: "#e74c3c" },
+    { name: "Completed", value: 7, color: "#00bfff" },
+    { name: "In Progress", value: 3, color: "#0099cc" },
+    { name: "Pending", value: 2, color: "#0066cc" },
   ];
 
   // Clear canvas
@@ -281,10 +281,10 @@ function initProgressChart() {
 
 // Helper function for wellness color
 function getWellnessColor(score) {
-  if (score >= 80) return "#05c19b"; // Green
-  if (score >= 60) return "#f39c12"; // Yellow
-  if (score >= 40) return "#e67e22"; // Orange
-  return "#e74c3c"; // Red
+  if (score >= 80) return "#00bfff"; // Excellent - Primary Blue
+  if (score >= 60) return "#0099cc"; // Good - Secondary Blue
+  if (score >= 40) return "#0066cc"; // Fair - Darker Blue
+  return "#2c3e50"; // Needs Attention - Dark Gray
 }
 
 // Update charts when window resizes

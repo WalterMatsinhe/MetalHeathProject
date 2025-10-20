@@ -156,31 +156,26 @@
               </div>
 
               <div
-                class="active-call-panel"
+                class="video-call-container"
                 id="therapistVideoCallContainer"
                 style="display: none"
               >
-                <h4>🎥 Active Video Call</h4>
-                <div class="therapist-video-area">
+                <div class="video-area">
                   <video
                     id="therapistLocalVideo"
                     autoplay
                     muted
                     playsinline
-                    class="therapist-local-video"
+                    class="local-video"
                   ></video>
                   <video
                     id="therapistRemoteVideo"
                     autoplay
                     playsinline
-                    class="therapist-remote-video"
+                    class="remote-video"
                   ></video>
-                  <div class="therapist-video-overlay">
-                    <div class="therapist-call-info">
-                      <p id="therapistCallUserInfo">User: Anonymous</p>
-                      <p id="therapistCallDuration">00:00</p>
-                    </div>
-                    <div class="therapist-call-controls">
+                  <div class="video-overlay">
+                    <div class="call-controls">
                       <button
                         id="therapistMuteBtn"
                         class="control-btn"
@@ -200,10 +195,15 @@
                         class="control-btn end-call"
                         title="End Call"
                       >
-                        <span class="control-icon">📞</span>
+                        <span class="control-icon">�</span>
                       </button>
                     </div>
                   </div>
+                </div>
+                <div class="call-info">
+                  <p id="therapistCallUserInfo">User: Connecting...</p>
+                  <p id="therapistCallStatus">Connected with user</p>
+                  <p id="therapistCallDuration">00:00</p>
                 </div>
               </div>
             </div>
@@ -278,7 +278,7 @@
                       type="text"
                       id="therapistFirstName"
                       name="firstName"
-                      placeholder="Dr. John"
+                      placeholder="Enter your first name"
                     />
                   </div>
                   <div class="form-group">
@@ -287,7 +287,7 @@
                       type="text"
                       id="therapistLastName"
                       name="lastName"
-                      placeholder="Doe"
+                      placeholder="Enter your last name"
                     />
                   </div>
                 </div>
@@ -299,7 +299,7 @@
                       type="email"
                       id="therapistEmail"
                       name="email"
-                      placeholder="dr.doe@hospital.co.ke"
+                      placeholder="professional@hospital.co.ke"
                     />
                   </div>
                   <div class="form-group">
@@ -699,45 +699,108 @@
           <hr class="chat-hr" />
 
           <div class="chat-container">
-            <!-- Users List -->
-            <div class="therapists-list">
-              <h3>Active Conversations</h3>
-              <div class="therapist-list-container" id="usersList">
-                <!-- Users will be loaded dynamically -->
-                <div class="loading-message">Loading conversations...</div>
+            <!-- Conversations Sidebar -->
+            <div class="chat-sidebar">
+              <div class="chat-sidebar-header">
+                <h3 class="sidebar-title">
+                  <i class="fa-solid fa-comments"></i>
+                  Conversations
+                </h3>
+                <button
+                  onclick="forceRefreshTherapists()"
+                  class="btn-refresh"
+                  title="Refresh conversations"
+                >
+                  <i class="fa-solid fa-rotate"></i>
+                </button>
+              </div>
+              
+              <div class="chat-search-box">
+                <i class="fa-solid fa-search"></i>
+                <input
+                  type="text"
+                  id="chatSearchInput"
+                  placeholder="Search conversations..."
+                  class="chat-search-input"
+                />
+              </div>
+
+              <div class="conversation-list" id="usersList">
+                <!-- Conversations will be loaded dynamically -->
+                <div class="loading-message">
+                  <i class="fa-solid fa-spinner fa-spin"></i>
+                  <p>Loading conversations...</p>
+                </div>
               </div>
             </div>
 
-            <!-- Chat Interface -->
-            <div class="chat-interface">
-              <div class="chat-window" id="chatWindow">
+            <!-- Chat Main Area -->
+            <div class="chat-main">
+              <!-- Chat Header (shown when conversation selected) -->
+              <div class="chat-main-header" id="chatMainHeader" style="display: none;">
+                <div class="chat-user-info">
+                  <div class="chat-user-avatar" id="chatUserAvatar">
+                    <i class="fa-solid fa-user"></i>
+                  </div>
+                  <div class="chat-user-details">
+                    <h4 class="chat-user-name" id="chatUserName">Select a conversation</h4>
+                    <span class="chat-user-status" id="chatUserStatus">
+                      <i class="fa-solid fa-circle"></i> Offline
+                    </span>
+                  </div>
+                </div>
+                <div class="chat-header-actions">
+                  <button class="btn-icon-action" title="Video call">
+                    <i class="fa-solid fa-video"></i>
+                  </button>
+                  <button class="btn-icon-action" title="More options">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Chat Messages Area -->
+              <div class="chat-messages-area" id="chatWindow">
                 <div class="chat-messages" id="chatMessages">
-                  <div class="welcome-message">
-                    <div class="message system-message">
-                      <div class="message-content">
-                        <p>
-                          Welcome to your chat interface! Select a conversation
-                          from the left to start messaging with your clients.
-                        </p>
-                      </div>
+                  <div class="chat-empty-state">
+                    <div class="empty-state-icon">
+                      <i class="fa-solid fa-comments"></i>
                     </div>
+                    <h3>Welcome to Chat</h3>
+                    <p>
+                      Select a conversation from the left to start messaging with your clients.
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div class="chat-input-container">
+              <!-- Chat Input Area -->
+              <div class="chat-input-area">
+                <div class="typing-indicator-container" id="typingIndicator" style="display: none;">
+                  <span class="typing-text">
+                    <i class="fa-solid fa-ellipsis"></i>
+                    <span id="typingUserName">User</span> is typing...
+                  </span>
+                </div>
                 <div class="chat-input-wrapper">
+                  <button class="btn-attachment" title="Attach file" disabled>
+                    <i class="fa-solid fa-paperclip"></i>
+                  </button>
                   <input
                     type="text"
                     id="messageInput"
                     placeholder="Type your message here..."
+                    class="message-input"
                     disabled
                   />
-                  <button id="sendButton" class="send-btn" disabled>
+                  <button class="btn-emoji" title="Add emoji" disabled>
+                    <i class="fa-solid fa-face-smile"></i>
+                  </button>
+                  <button id="sendButton" class="btn-send" disabled>
                     <i class="fa-solid fa-paper-plane"></i>
                   </button>
                 </div>
-                <div class="chat-status" id="chatStatus">
+                <div class="chat-input-status" id="chatStatus">
                   Select a conversation to start chatting
                 </div>
               </div>
@@ -759,6 +822,8 @@
     <script src="js/charts.js"></script>
     <script src="js/notifications.js"></script>
     <script src="js/sidebar.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/therapist-profile.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

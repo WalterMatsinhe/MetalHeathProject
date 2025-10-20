@@ -3,14 +3,45 @@ const mongoose = require("mongoose");
 const UserSchema = new mongoose.Schema(
   {
     // Basic Authentication Fields
+    firstName: {
+      type: String,
+      required: [true, "First name is required"],
+      trim: true,
+      minlength: [1, "First name cannot be empty"],
+      maxlength: [50, "First name cannot be longer than 50 characters"],
+      validate: {
+        validator: function (v) {
+          return /^[a-zA-Z\s\-'\.]+$/.test(v);
+        },
+        message:
+          "First name can only contain letters, spaces, hyphens, apostrophes, and periods",
+      },
+    },
+    lastName: {
+      type: String,
+      required: [true, "Last name is required"],
+      trim: true,
+      minlength: [1, "Last name cannot be empty"],
+      maxlength: [50, "Last name cannot be longer than 50 characters"],
+      validate: {
+        validator: function (v) {
+          return /^[a-zA-Z\s\-'\.]+$/.test(v);
+        },
+        message:
+          "Last name can only contain letters, spaces, hyphens, apostrophes, and periods",
+      },
+    },
+    // Computed full name for backward compatibility
     name: {
       type: String,
-      required: true,
+      required: false,
     },
     email: {
       type: String,
       required: true,
       unique: true,
+      lowercase: true,
+      trim: true,
     },
     password: {
       type: String,
@@ -18,16 +49,22 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "therapist"],
+      enum: ["user", "therapist", "admin"],
       default: "user",
     },
-
-    // Profile Information
-    firstName: {
+    // Registration status for therapist applications
+    registrationStatus: {
       type: String,
-      default: "",
+      enum: ["pending", "approved", "rejected", "active"],
+      default: function () {
+        return this.role === "therapist" ? "pending" : "active";
+      },
     },
-    lastName: {
+    registrationDate: {
+      type: Date,
+      default: Date.now,
+    },
+    rejectionReason: {
       type: String,
       default: "",
     },
@@ -224,8 +261,14 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Calculate years on platform before saving
+// Pre-save middleware
 UserSchema.pre("save", function (next) {
+  // Generate full name from firstName and lastName
+  if (this.firstName && this.lastName) {
+    this.name = `${this.firstName} ${this.lastName}`.trim();
+  }
+
+  // Calculate years on platform
   if (this.isNew) {
     this.stats.yearsOnPlatform = 0;
   } else {

@@ -13,10 +13,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (currentPath.includes("userDashboard")) {
     console.log("Initializing user dashboard...");
-    // User dashboard specific initialization is handled in individual modules
+    // Initialize video call manager for user dashboard only if not already initialized
+    if (!window.videoCallManager) {
+      window.videoCallManager = new VideoCallManager();
+    }
   } else if (currentPath.includes("therapistDashboard")) {
     console.log("Initializing therapist dashboard...");
-    // Therapist dashboard specific initialization is handled in individual modules
+    // Initialize video call manager for therapist dashboard only if not already initialized
+    if (!window.videoCallManager) {
+      window.videoCallManager = new VideoCallManager();
+    }
   } else if (currentPath.includes("profile")) {
     console.log("Initializing profile page...");
     // Profile page initialization is handled in profile.js

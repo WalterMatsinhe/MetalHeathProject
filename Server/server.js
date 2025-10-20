@@ -44,10 +44,24 @@ app.get("/", (req, res) => {
 // Serve assets folder for images and other static files
 app.use("/assets", express.static(path.join(__dirname, "../assets")));
 
+// Store connectedUsers in app for routes to access
+app.set("connectedUsers", new Map());
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", require("./routes/profile"));
 app.use("/api/chat", require("./routes/chat"));
+app.use("/api/admin", require("./routes/admin"));
+
+console.log("✅ All routes registered:");
+console.log("  - /api/auth");
+console.log("  - /api/profile");
+console.log("  - /api/chat");
+console.log("  - /api/admin");
+
+// Import models for Socket.IO usage
+const Conversation = require("./models/Conversation");
+const Message = require("./models/Message");
 
 // JWT Middleware
 const { auth, therapist } = require("./middleware/auth");
@@ -85,11 +99,20 @@ app.get("/api/user/profile", auth, async (req, res) => {
     const user = await User.findById(req.user.id).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json({
+      _id: user._id,
+      id: user._id, // Include both _id and id for compatibility
       name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
+      role: user.role,
       profilePicture: user.profilePicture || "",
+      specialization: user.specialization,
+      yearsExperience: user.yearsExperience,
+      bio: user.bio,
     });
   } catch (err) {
+    console.error("Error in /api/user/profile:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -117,25 +140,80 @@ app.get("/api/test-auth", auth, (req, res) => {
   });
 });
 
+// Debug endpoint to check connected users
+app.get("/api/debug/connected-users", (req, res) => {
+  const appConnectedUsers = app.get("connectedUsers") || new Map();
+  const users = [];
+  for (const [socketId, user] of appConnectedUsers.entries()) {
+    users.push({
+      socketId,
+      userId: user.userId,
+      userType: user.userType,
+      userName: user.userName,
+    });
+  }
+  res.json({
+    totalConnected: appConnectedUsers.size,
+    users,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // WebRTC Signaling Server
 const connectedUsers = new Map(); // Store connected users
 const therapistUsers = new Map(); // Store therapist users
 const activeRooms = new Map(); // Store active video call rooms
+
+// Function to get online user IDs
+function getOnlineUserIds() {
+  const onlineIds = new Set();
+  for (const [socketId, user] of connectedUsers.entries()) {
+    if (user.userId) {
+      onlineIds.add(user.userId.toString());
+    }
+  }
+  return onlineIds;
+}
+
+// Function to check if user is online
+function isUserOnline(userId) {
+  const onlineIds = getOnlineUserIds();
+  return onlineIds.has(userId.toString());
+}
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
   // User registration
   socket.on("register", (data) => {
+    console.log("=== REGISTER EVENT RECEIVED ===");
+    console.log("Data:", JSON.stringify(data, null, 2));
+    console.log("Socket ID:", socket.id);
+
     const { userId, userType, userName } = data;
 
-    connectedUsers.set(socket.id, {
+    if (!userId || !userType || !userName) {
+      console.error("❌ ERROR: Missing required registration data");
+      console.error("userId:", userId);
+      console.error("userType:", userType);
+      console.error("userName:", userName);
+      return;
+    }
+
+    const userInfo = {
       userId,
       userType,
       userName,
       socketId: socket.id,
       isAvailable: userType === "therapist" ? false : true,
-    });
+    };
+
+    connectedUsers.set(socket.id, userInfo);
+
+    // Also update the app-level connectedUsers
+    const appConnectedUsers = app.get("connectedUsers");
+    appConnectedUsers.set(socket.id, userInfo);
+    app.set("connectedUsers", appConnectedUsers);
 
     if (userType === "therapist") {
       therapistUsers.set(socket.id, {
@@ -146,28 +224,33 @@ io.on("connection", (socket) => {
       });
     }
 
-    console.log(`${userType} registered: ${userName} (${socket.id})`);
+    console.log(`✅ ${userType} registered: ${userName} (${socket.id})`);
+    console.log("Total connected users:", connectedUsers.size);
 
     // Broadcast therapist availability to all users
     if (userType === "therapist") {
       io.emit("therapist-availability-update", getTherapistAvailability());
     }
+
+    console.log("=== REGISTER COMPLETE ===");
   });
 
   // Handle chat room joining
   socket.on("join-chat", (data) => {
     const { room, userId, therapistId } = data;
     const user = connectedUsers.get(socket.id);
-    
+
     if (user && room) {
       socket.join(room);
-      console.log(`${user.userName} (${user.userType}) joined chat room: ${room}`);
-      
+      console.log(
+        `${user.userName} (${user.userType}) joined chat room: ${room}`
+      );
+
       // Notify the room that someone joined
       socket.to(room).emit("user-joined-chat", {
         userId: user.userId,
         userName: user.userName,
-        userType: user.userType
+        userType: user.userType,
       });
     }
   });
@@ -288,11 +371,38 @@ io.on("connection", (socket) => {
   });
 
   // Chat functionality
-  socket.on("join-chat", (data) => {
-    const { therapistId, userId } = data;
-    const chatRoom = `chat_${userId}_${therapistId}`;
-    socket.join(chatRoom);
-    console.log(`User ${userId} joined chat with therapist ${therapistId}`);
+  socket.on("join-chat", async (data) => {
+    try {
+      const { therapistId, userId, currentUserId } = data;
+      const user = connectedUsers.get(socket.id);
+
+      if (user && therapistId && userId) {
+        // Create consistent room naming: always user_therapist format
+        const chatRoom = `chat_${userId}_${therapistId}`;
+        socket.join(chatRoom);
+
+        console.log(
+          `${user.userName} (${user.userType}) joined chat room: ${chatRoom}`
+        );
+
+        // Notify the room that someone joined (but not the joiner themselves)
+        socket.to(chatRoom).emit("user-joined-chat", {
+          userId: user.userId,
+          userName: user.userName,
+          userType: user.userType,
+          room: chatRoom,
+        });
+
+        // Send room confirmation to the user who joined
+        socket.emit("chat-room-joined", {
+          room: chatRoom,
+          message: "Successfully joined chat room",
+        });
+      }
+    } catch (error) {
+      console.error("Error joining chat room:", error);
+      socket.emit("chat-error", { message: "Failed to join chat room" });
+    }
   });
 
   socket.on("register-therapist", (data) => {
@@ -307,53 +417,157 @@ io.on("connection", (socket) => {
     console.log(`Therapist ${therapistName} registered with ID ${therapistId}`);
   });
 
-  socket.on("send-message", (data) => {
-    const { to, message, timestamp } = data;
-    const user = connectedUsers.get(socket.id);
+  socket.on("send-message", async (data) => {
+    try {
+      console.log("=== RECEIVED send-message EVENT ===");
+      console.log("Data received:", JSON.stringify(data, null, 2));
+      console.log("Socket ID:", socket.id);
 
-    if (user) {
-      // Create consistent room naming: chat_{userId}_{therapistId}
-      let chatRoom;
-      if (user.userType === "therapist") {
-        chatRoom = `chat_${to}_${user.userId}`; // therapist sending to user
-      } else {
-        chatRoom = `chat_${user.userId}_${to}`; // user sending to therapist
+      const { to, message, therapistId, userId } = data;
+      const user = connectedUsers.get(socket.id);
+
+      console.log("User from connectedUsers:", user);
+      console.log("Message content:", message);
+      console.log("To:", to);
+      console.log("TherapistId:", therapistId);
+      console.log("UserId:", userId);
+
+      if (!user) {
+        console.error("❌ ERROR: User not found in connectedUsers!");
+        console.error(
+          "Available socket IDs:",
+          Array.from(connectedUsers.keys())
+        );
+        socket.emit("message-error", {
+          message: "User not registered. Please refresh the page.",
+        });
+        return;
       }
-      
-      // Send message to the chat room
-      io.to(chatRoom).emit("message", {
+
+      if (!message || !message.trim()) {
+        console.error("❌ ERROR: Message is empty or invalid");
+        socket.emit("message-error", { message: "Message cannot be empty" });
+        return;
+      }
+
+      // Determine recipient ID and chat room based on sender type
+      let recipientId, chatRoom;
+
+      if (user.userType === "therapist") {
+        recipientId = to || userId;
+        chatRoom = `chat_${recipientId}_${user.userId}`;
+        console.log("→ Therapist sending message");
+      } else {
+        recipientId = to || therapistId;
+        chatRoom = `chat_${user.userId}_${recipientId}`;
+        console.log("→ User sending message");
+      }
+
+      console.log("Recipient ID:", recipientId);
+      console.log("Chat room:", chatRoom);
+
+      // Find or create conversation in database
+      const conversation = await Conversation.findOrCreate(
+        user.userType === "therapist" ? recipientId : user.userId,
+        user.userType === "therapist" ? user.userId : recipientId
+      );
+
+      console.log("Conversation found/created:", conversation._id);
+
+      // Create and save message to database
+      const newMessage = new Message({
+        conversation: conversation._id,
+        sender: user.userId,
+        content: message.trim(),
+        messageType: "text",
+        readBy: [{ user: user.userId, readAt: new Date() }],
+      });
+
+      await newMessage.save();
+      await newMessage.populate("sender", "name firstName lastName role");
+
+      console.log("Message saved to database:", newMessage._id);
+
+      // Update conversation unread count for recipient
+      await conversation.incrementUnreadCount(recipientId);
+
+      // Prepare message data for real-time broadcast
+      const messageData = {
+        id: newMessage._id,
         from: user.userId,
         fromName: user.userName,
-        message,
-        timestamp: timestamp || new Date().toISOString(),
+        message: message.trim(),
+        timestamp: newMessage.createdAt.toISOString(),
         sender: user.userType,
+        messageType: "text",
+        conversationId: conversation._id,
+      };
+
+      // Send message to the chat room (includes sender and recipient if online)
+      io.to(chatRoom).emit("message", messageData);
+
+      console.log(
+        `✅ Message sent in chat room ${chatRoom} from ${user.userType} ${
+          user.userName
+        }: ${message.trim()}`
+      );
+
+      // Send delivery confirmation to sender
+      socket.emit("message-sent", {
+        success: true,
+        message: newMessage,
+        conversationId: conversation._id,
       });
-      
-      console.log(`Message sent in chat room ${chatRoom} from ${user.userType} ${user.userName}: ${message}`);
+
+      console.log("=== send-message EVENT COMPLETE ===");
+    } catch (error) {
+      console.error("❌ ERROR in send-message:", error);
+      console.error("Error stack:", error.stack);
+      socket.emit("message-error", {
+        message: `Failed to send message: ${error.message}`,
+      });
     }
   });
 
   socket.on("typing", (data) => {
-    const { to } = data;
+    const { to, therapistId, userId } = data;
     const user = connectedUsers.get(socket.id);
 
     if (user) {
-      const chatRoom = `chat_${user.userId}_${to}`;
+      let chatRoom;
+      if (user.userType === "therapist") {
+        const recipientId = to || userId;
+        chatRoom = `chat_${recipientId}_${user.userId}`;
+      } else {
+        const recipientId = to || therapistId;
+        chatRoom = `chat_${user.userId}_${recipientId}`;
+      }
+
       socket.to(chatRoom).emit("typing", {
         from: user.userId,
         userName: user.userName,
+        userType: user.userType,
       });
     }
   });
 
   socket.on("stop-typing", (data) => {
-    const { to } = data;
+    const { to, therapistId, userId } = data;
     const user = connectedUsers.get(socket.id);
 
     if (user) {
-      const chatRoom = `chat_${user.userId}_${to}`;
+      let chatRoom;
+      if (user.userType === "therapist") {
+        const recipientId = to || userId;
+        chatRoom = `chat_${recipientId}_${user.userId}`;
+      } else {
+        const recipientId = to || therapistId;
+        chatRoom = `chat_${user.userId}_${recipientId}`;
+      }
+
       socket.to(chatRoom).emit("stop-typing", {
         from: user.userId,
+        userType: user.userType,
       });
     }
   });
@@ -364,6 +578,8 @@ io.on("connection", (socket) => {
 
     const user = connectedUsers.get(socket.id);
     if (user) {
+      console.log(`Cleaning up user: ${user.userName} (${user.userType})`);
+
       // Clean up active rooms
       for (const [roomId, room] of activeRooms.entries()) {
         if (
@@ -376,14 +592,37 @@ io.on("connection", (socket) => {
         }
       }
 
-      // Remove from connected users
+      // Remove from connected users (both local and app-level)
       connectedUsers.delete(socket.id);
+
+      // Also remove from app-level connectedUsers
+      const appConnectedUsers = app.get("connectedUsers");
+      appConnectedUsers.delete(socket.id);
+      app.set("connectedUsers", appConnectedUsers);
 
       if (user.userType === "therapist") {
         therapistUsers.delete(socket.id);
         // Broadcast updated therapist availability
         io.emit("therapist-availability-update", getTherapistAvailability());
+
+        // Broadcast status change to all clients
+        io.emit("user-status-changed", {
+          userId: user.userId,
+          status: "offline",
+          userType: user.userType,
+        });
+      } else {
+        // Broadcast user status change
+        io.emit("user-status-changed", {
+          userId: user.userId,
+          status: "offline",
+          userType: user.userType,
+        });
       }
+
+      console.log(
+        `✅ User ${user.userName} cleaned up. Remaining users: ${connectedUsers.size}`
+      );
     }
   });
 });
