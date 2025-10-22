@@ -80,12 +80,6 @@
             </a>
           </li>
           <li>
-            <a href="#mood" onclick="showSection('mood')">
-              <i class="fas fa-heart"></i>
-              Mood Tracking Tools
-            </a>
-          </li>
-          <li>
             <a href="#support" onclick="showSection('support')">
               <i class="fas fa-video"></i>
               Peer & Professional Support
@@ -106,17 +100,271 @@
         </ul>
       </aside>
       <main class="main-content">
-        <section id="mood" class="content-section">
-          <h2>Mood Tracking Tools</h2>
-          <p>
-            Track your mood daily to identify patterns and triggers. Use our
-            integrated mood tracker or download recommended apps to monitor your
-            emotional well-being.
-          </p>
-          <button onclick="alert('Mood tracker coming soon!')">
-            Open Mood Tracker
-          </button>
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="content-section">
+          <header class="dashboard-header">
+            <h2 class="title dashboard-title">
+              Therapist<span class="accent"> Dashboard</span>
+            </h2>
+            <p class="dashboard-desc">
+              Welcome to your professional dashboard. Track your client
+              interactions, monitor progress, and manage your therapeutic
+              practice efficiently.
+            </p>
+          </header>
+          <hr class="dashboard-hr" />
+
+          <!-- Quick Stats Overview -->
+          <section class="dashboard-stats">
+            <h3 class="dashboard-subtitle">Your Professional Overview</h3>
+            <div class="stats-grid">
+              <div class="stat-card stat-card-blue">
+                <div class="stat-icon">
+                  <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                  <span class="stat-number" id="therapistTotalClients">0</span>
+                  <span class="stat-label">Active Clients</span>
+                </div>
+              </div>
+              <div class="stat-card stat-card-green">
+                <div class="stat-icon">
+                  <i class="fas fa-video"></i>
+                </div>
+                <div class="stat-content">
+                  <span class="stat-number" id="therapistSessionsToday">0</span>
+                  <span class="stat-label">Sessions Today</span>
+                </div>
+              </div>
+              <div class="stat-card stat-card-purple">
+                <div class="stat-icon">
+                  <i class="fas fa-comments"></i>
+                </div>
+                <div class="stat-content">
+                  <span class="stat-number" id="therapistUnreadMessages"
+                    >0</span
+                  >
+                  <span class="stat-label">Unread Messages</span>
+                </div>
+              </div>
+              <div class="stat-card stat-card-orange">
+                <div class="stat-icon">
+                  <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                  <span class="stat-number" id="therapistHoursThisWeek">0</span>
+                  <span class="stat-label">Hours This Week</span>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Visual Analytics Charts -->
+          <section class="visual-analytics">
+            <h3 class="dashboard-subtitle">Analytics & Insights</h3>
+            <div class="charts-container">
+              <div class="charts-grid">
+                <!-- Client Progress Chart -->
+                <div class="chart-card">
+                  <div class="chart-header">
+                    <h4 class="chart-title">Client Sessions</h4>
+                    <span class="chart-subtitle">Weekly overview</span>
+                  </div>
+                  <div class="chart-wrapper">
+                    <canvas
+                      id="therapistSessionsChart"
+                      class="chart-canvas"
+                    ></canvas>
+                  </div>
+                </div>
+
+                <!-- Client Satisfaction Chart -->
+                <div class="chart-card">
+                  <div class="chart-header">
+                    <h4 class="chart-title">Client Engagement</h4>
+                    <span class="chart-subtitle">Activity levels</span>
+                  </div>
+                  <div class="chart-wrapper">
+                    <canvas
+                      id="therapistEngagementChart"
+                      class="chart-canvas"
+                    ></canvas>
+                  </div>
+                </div>
+
+                <!-- Response Time Gauge -->
+                <div class="chart-card">
+                  <div class="chart-header">
+                    <h4 class="chart-title">Response Time</h4>
+                    <span class="chart-subtitle">Average minutes</span>
+                  </div>
+                  <div class="chart-wrapper">
+                    <canvas
+                      id="therapistResponseTimeGauge"
+                      class="chart-canvas"
+                    ></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Recent Client Activity -->
+          <section class="recent-activity">
+            <h3 class="dashboard-subtitle">Recent Client Activity</h3>
+            <div class="activity-container">
+              <div class="activity-list" id="therapistActivityList">
+                <div class="activity-item">
+                  <div class="activity-icon">
+                    <i class="fas fa-user-check"></i>
+                  </div>
+                  <div class="activity-content">
+                    <h4>Welcome to Your Dashboard!</h4>
+                    <p>
+                      Start managing your clients and providing professional
+                      support.
+                    </p>
+                    <span class="activity-time">Just now</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Upcoming Appointments & Pending Tasks -->
+          <section class="appointments-section">
+            <h3 class="dashboard-subtitle">Today's Schedule & Tasks</h3>
+            <div class="appointments-container">
+              <div class="appointment-card">
+                <div class="appointment-icon">
+                  <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="appointment-content">
+                  <h4>Upcoming Appointments</h4>
+                  <ul class="appointments-list" id="therapistAppointmentsList">
+                    <li>No appointments scheduled for today</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="appointment-card">
+                <div class="appointment-icon">
+                  <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="appointment-content">
+                  <h4>Pending Tasks</h4>
+                  <ul class="tasks-list" id="therapistTasksList">
+                    <li>
+                      <label class="task-item">
+                        <input type="checkbox" /> Review new client messages
+                      </label>
+                    </li>
+                    <li>
+                      <label class="task-item">
+                        <input type="checkbox" /> Update client progress notes
+                      </label>
+                    </li>
+                    <li>
+                      <label class="task-item">
+                        <input type="checkbox" /> Prepare for upcoming sessions
+                      </label>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Client Insights & Alerts -->
+          <section class="insights-section">
+            <h3 class="dashboard-subtitle">Client Insights & Alerts</h3>
+            <div class="insights-grid">
+              <div class="insight-card insight-info">
+                <div class="insight-header">
+                  <i class="fas fa-info-circle"></i>
+                  <span>Active Conversations</span>
+                </div>
+                <div class="insight-content">
+                  <p class="insight-number" id="activeConversations">0</p>
+                  <p class="insight-label">Clients currently engaged in chat</p>
+                </div>
+              </div>
+
+              <div class="insight-card insight-warning">
+                <div class="insight-header">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  <span>Needs Attention</span>
+                </div>
+                <div class="insight-content">
+                  <p class="insight-number" id="needsAttention">0</p>
+                  <p class="insight-label">
+                    Clients requiring immediate follow-up
+                  </p>
+                </div>
+              </div>
+
+              <div class="insight-card insight-success">
+                <div class="insight-header">
+                  <i class="fas fa-chart-line"></i>
+                  <span>Progress Updates</span>
+                </div>
+                <div class="insight-content">
+                  <p class="insight-number" id="progressUpdates">0</p>
+                  <p class="insight-label">Clients showing positive progress</p>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="dashboard-hr" />
+
+          <!-- Quick Actions -->
+          <section class="quick-actions-section">
+            <h3 class="dashboard-subtitle">Quick Actions</h3>
+            <div class="quick-actions-grid">
+              <button
+                class="quick-action-btn"
+                onclick="showSection('chat')"
+                title="Start chatting with clients"
+              >
+                <i class="fas fa-comments"></i>
+                <span>Chat with Clients</span>
+              </button>
+              <button
+                class="quick-action-btn"
+                onclick="showSection('support')"
+                title="Manage video calls"
+              >
+                <i class="fas fa-video"></i>
+                <span>Video Support</span>
+              </button>
+              <button
+                class="quick-action-btn"
+                onclick="showSection('profile')"
+                title="Update your profile"
+              >
+                <i class="fas fa-user-cog"></i>
+                <span>Update Profile</span>
+              </button>
+              <button
+                class="quick-action-btn"
+                onclick="refreshTherapistDashboard()"
+                title="Refresh dashboard data"
+              >
+                <i class="fas fa-sync-alt"></i>
+                <span>Refresh Data</span>
+              </button>
+            </div>
+          </section>
+
+          <div class="scroll-indicator dashboard-scroll-indicator">
+            <span><i class="fas fa-chevron-down"></i></span> Explore other
+            sections from the sidebar
+          </div>
         </section>
+
         <section id="support" class="content-section content-section-hidden">
           <header class="support-header">
             <h2 class="title accent support-title">Therapist Support Center</h2>
@@ -714,7 +962,7 @@
                   <i class="fa-solid fa-rotate"></i>
                 </button>
               </div>
-              
+
               <div class="chat-search-box">
                 <i class="fa-solid fa-search"></i>
                 <input
@@ -737,13 +985,19 @@
             <!-- Chat Main Area -->
             <div class="chat-main">
               <!-- Chat Header (shown when conversation selected) -->
-              <div class="chat-main-header" id="chatMainHeader" style="display: none;">
+              <div
+                class="chat-main-header"
+                id="chatMainHeader"
+                style="display: none"
+              >
                 <div class="chat-user-info">
                   <div class="chat-user-avatar" id="chatUserAvatar">
                     <i class="fa-solid fa-user"></i>
                   </div>
                   <div class="chat-user-details">
-                    <h4 class="chat-user-name" id="chatUserName">Select a conversation</h4>
+                    <h4 class="chat-user-name" id="chatUserName">
+                      Select a conversation
+                    </h4>
                     <span class="chat-user-status" id="chatUserStatus">
                       <i class="fa-solid fa-circle"></i> Offline
                     </span>
@@ -768,7 +1022,8 @@
                     </div>
                     <h3>Welcome to Chat</h3>
                     <p>
-                      Select a conversation from the left to start messaging with your clients.
+                      Select a conversation from the left to start messaging
+                      with your clients.
                     </p>
                   </div>
                 </div>
@@ -776,7 +1031,11 @@
 
               <!-- Chat Input Area -->
               <div class="chat-input-area">
-                <div class="typing-indicator-container" id="typingIndicator" style="display: none;">
+                <div
+                  class="typing-indicator-container"
+                  id="typingIndicator"
+                  style="display: none"
+                >
                   <span class="typing-text">
                     <i class="fa-solid fa-ellipsis"></i>
                     <span id="typingUserName">User</span> is typing...
@@ -812,6 +1071,9 @@
     <!-- Footer -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
+    <!-- Chart.js for analytics charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
     <!-- Organized JavaScript Files -->
     <script src="js/utils.js"></script>
     <script src="js/auth.js"></script>
@@ -824,6 +1086,7 @@
     <script src="js/sidebar.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/therapist-profile.js"></script>
+    <script src="js/therapist-dashboard.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

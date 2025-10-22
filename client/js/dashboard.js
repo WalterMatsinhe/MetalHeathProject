@@ -27,28 +27,92 @@ function initializeDashboard() {
   initializeVisualCharts();
 }
 
-// Load and display dashboard statistics
-function loadDashboardStats() {
-  const stats = getUserStats();
+// Load and display dashboard statistics from server
+async function loadDashboardStats() {
+  console.log("Loading dashboard stats from server...");
 
-  // Update dashboard stats display
-  const dashboardDaysActive = document.getElementById("dashboardDaysActive");
-  const dashboardSessionsCompleted = document.getElementById(
-    "dashboardSessionsCompleted"
-  );
-  const dashboardMoodEntries = document.getElementById("dashboardMoodEntries");
-  const dashboardGoalsAchieved = document.getElementById(
-    "dashboardGoalsAchieved"
-  );
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      console.error("No auth token found");
+      return;
+    }
 
-  if (dashboardDaysActive)
-    dashboardDaysActive.textContent = stats.daysActive || 0;
-  if (dashboardSessionsCompleted)
-    dashboardSessionsCompleted.textContent = stats.sessionsCompleted || 0;
-  if (dashboardMoodEntries)
-    dashboardMoodEntries.textContent = stats.moodEntries || 0;
-  if (dashboardGoalsAchieved)
-    dashboardGoalsAchieved.textContent = stats.goalsAchieved || 0;
+    // Get mood statistics from server
+    const moodStatsResponse = await fetch(
+      "http://localhost:5000/api/mood/stats?days=30",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const moodStatsData = await moodStatsResponse.json();
+    console.log("Mood stats received:", moodStatsData);
+
+    if (moodStatsResponse.ok && moodStatsData.stats) {
+      const stats = moodStatsData.stats;
+
+      // Update dashboard stats display
+      const dashboardDaysActive = document.getElementById(
+        "dashboardDaysActive"
+      );
+      const dashboardSessionsCompleted = document.getElementById(
+        "dashboardSessionsCompleted"
+      );
+      const dashboardMoodEntries = document.getElementById(
+        "dashboardMoodEntries"
+      );
+      const dashboardGoalsAchieved = document.getElementById(
+        "dashboardGoalsAchieved"
+      );
+
+      // Calculate days active from check-in streak
+      if (dashboardDaysActive) {
+        dashboardDaysActive.textContent = stats.checkInStreak || 0;
+      }
+
+      // Sessions completed (for now, use total entries / 5 as estimate)
+      if (dashboardSessionsCompleted) {
+        const estimatedSessions = Math.floor((stats.totalEntries || 0) / 5);
+        dashboardSessionsCompleted.textContent = estimatedSessions;
+      }
+
+      // Mood entries
+      if (dashboardMoodEntries) {
+        dashboardMoodEntries.textContent = stats.totalEntries || 0;
+      }
+
+      // Goals achieved (use check-in streak as goal achievement)
+      if (dashboardGoalsAchieved) {
+        const goalsAchieved = Math.floor((stats.checkInStreak || 0) / 2);
+        dashboardGoalsAchieved.textContent = goalsAchieved;
+      }
+
+      // Store stats for use in charts
+      window.dashboardStats = stats;
+
+      // Update visual charts with real data
+      if (typeof initializeVisualCharts === "function") {
+        initializeVisualCharts();
+      }
+    }
+  } catch (error) {
+    console.error("Error loading dashboard stats:", error);
+    // Fallback to default values
+    const defaultElements = {
+      dashboardDaysActive: 0,
+      dashboardSessionsCompleted: 0,
+      dashboardMoodEntries: 0,
+      dashboardGoalsAchieved: 0,
+    };
+
+    Object.keys(defaultElements).forEach((id) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = defaultElements[id];
+    });
+  }
 }
 
 // Initialize mood selector functionality
@@ -69,7 +133,7 @@ function initializeMoodSelector() {
 }
 
 // Save daily wellness check-in
-function saveDailyWellness() {
+async function saveDailyWellness() {
   const selectedMood = document.querySelector(".mood-btn.active");
   const dailyNotes = document.getElementById("dailyNotes");
 
@@ -78,47 +142,70 @@ function saveDailyWellness() {
     return;
   }
 
+  const moodType = selectedMood.dataset.mood;
+  const moodLevel = parseInt(selectedMood.dataset.level);
+
   const wellnessData = {
-    mood: selectedMood.dataset.mood,
+    moodType,
+    moodLevel,
     notes: dailyNotes ? dailyNotes.value : "",
-    date: new Date().toISOString().split("T")[0],
+    energyLevel: 3, // Default values
+    stressLevel: 3,
+    activities: [],
+    factors: [],
+    isDailyCheckIn: true,
   };
 
-  // Save to localStorage (in real app, this would be sent to server)
-  let wellnessHistory =
-    JSON.parse(localStorage.getItem("wellnessHistory")) || [];
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      showNotification("Please login to save wellness check", "error");
+      return;
+    }
 
-  // Check if entry for today already exists
-  const today = wellnessData.date;
-  const existingEntry = wellnessHistory.findIndex(
-    (entry) => entry.date === today
-  );
+    const response = await fetch("http://localhost:5000/api/mood", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(wellnessData),
+    });
 
-  if (existingEntry !== -1) {
-    wellnessHistory[existingEntry] = wellnessData;
-    showNotification("Today's wellness check updated successfully!", "success");
-  } else {
-    wellnessHistory.push(wellnessData);
-    showNotification("Wellness check saved successfully!", "success");
+    const data = await response.json();
 
-    // Update mood entries count
-    const stats = getUserStats();
-    stats.moodEntries = (stats.moodEntries || 0) + 1;
-    updateUserStats(stats);
-    loadDashboardStats();
-  }
+    if (response.ok) {
+      showNotification(
+        data.message || "Wellness check saved successfully!",
+        "success"
+      );
 
-  localStorage.setItem("wellnessHistory", JSON.stringify(wellnessHistory));
+      // Reload dashboard stats to reflect new entry
+      loadDashboardStats();
 
-  // Add to recent activity
-  addRecentActivity("mood", "Completed daily wellness check-in", "Just now");
+      // Add to recent activity
+      addRecentActivity(
+        "mood",
+        "Completed daily wellness check-in",
+        "Just now"
+      );
 
-  // Clear form
-  document
-    .querySelectorAll(".mood-btn")
-    .forEach((btn) => btn.classList.remove("active"));
-  if (dailyNotes) {
-    dailyNotes.value = "";
+      // Clear form
+      document
+        .querySelectorAll(".mood-btn")
+        .forEach((btn) => btn.classList.remove("active"));
+      if (dailyNotes) {
+        dailyNotes.value = "";
+      }
+    } else {
+      showNotification(
+        data.message || "Failed to save wellness check",
+        "error"
+      );
+    }
+  } catch (error) {
+    console.error("Error saving wellness check:", error);
+    showNotification("Error saving wellness check", "error");
   }
 }
 
@@ -193,24 +280,79 @@ function addRecentActivity(type, description, time) {
   }
 }
 
-// Load recent activity from localStorage
-function loadRecentActivity() {
-  const recentActivity =
-    JSON.parse(localStorage.getItem("recentActivity")) || [];
+// Load recent activity from server
+async function loadRecentActivity() {
   const activityList = document.getElementById("activityList");
+  if (!activityList) return;
 
-  if (!activityList || recentActivity.length === 0) return;
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
 
-  // Clear existing activity (except welcome message)
-  const existingActivities = activityList.querySelectorAll(".activity-item");
-  existingActivities.forEach((item, index) => {
-    if (index > 0) item.remove(); // Keep first welcome message
-  });
+    // Get recent mood entries
+    const response = await fetch("http://localhost:5000/api/mood?days=7", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  // Add recent activities
-  recentActivity.slice(0, 4).forEach((activity) => {
-    addRecentActivity(activity.type, activity.description, activity.time);
-  });
+    const data = await response.json();
+
+    if (response.ok && data.moods && data.moods.length > 0) {
+      // Clear existing activity items
+      activityList.innerHTML = "";
+
+      // Add welcome message
+      const welcomeItem = document.createElement("div");
+      welcomeItem.className = "activity-item";
+      welcomeItem.innerHTML = `
+        <div class="activity-icon">👋</div>
+        <div class="activity-content">
+          <h4>Welcome back!</h4>
+          <span class="activity-time">Just now</span>
+        </div>
+      `;
+      activityList.appendChild(welcomeItem);
+
+      // Add recent mood entries as activities
+      data.moods.slice(0, 4).forEach((mood) => {
+        const date = new Date(mood.createdAt);
+        const timeAgo = getTimeAgo(date);
+        const moodEmoji = getMoodEmoji(mood.moodLevel);
+
+        addRecentActivity(
+          "mood",
+          `${moodEmoji} Logged mood: ${mood.moodType}`,
+          timeAgo
+        );
+      });
+    }
+  } catch (error) {
+    console.error("Error loading recent activity:", error);
+  }
+}
+
+// Helper function to get time ago
+function getTimeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+
+  if (seconds < 60) return "Just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
+  return date.toLocaleDateString();
+}
+
+// Helper function to get mood emoji
+function getMoodEmoji(level) {
+  const emojis = {
+    1: "😭",
+    2: "😢",
+    3: "😐",
+    4: "😊",
+    5: "😄",
+  };
+  return emojis[level] || "😊";
 }
 
 // Update user stats display in multiple places

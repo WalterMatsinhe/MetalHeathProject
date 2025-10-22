@@ -1,5 +1,10 @@
 const express = require("express");
 const User = require("../models/User");
+const Mood = require("../models/Mood");
+const Goal = require("../models/Goal");
+const Message = require("../models/Message");
+const Conversation = require("../models/Conversation");
+const Reminder = require("../models/Reminder");
 const { auth } = require("../middleware/auth");
 
 const router = express.Router();
@@ -197,6 +202,98 @@ router.get("/statistics", auth, isAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error("Error fetching statistics:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get all users
+router.get("/users", auth, isAdmin, async (req, res) => {
+  try {
+    const users = await User.find({ role: "user" })
+      .select("-password")
+      .sort({ createdAt: -1 });
+
+    res.json(users);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get all users (including therapists and admins)
+router.get("/users/all", auth, isAdmin, async (req, res) => {
+  try {
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
+
+    res.json(users);
+  } catch (err) {
+    console.error("Error fetching all users:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Delete user by ID
+router.delete("/users/:id", auth, isAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Find the user first
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Prevent admin from deleting themselves
+    if (user._id.toString() === req.user.id) {
+      return res.status(400).json({
+        message: "You cannot delete your own admin account",
+      });
+    }
+
+    // Prevent deletion of other admin accounts
+    if (user.role === "admin") {
+      return res.status(403).json({
+        message: "Cannot delete admin accounts",
+      });
+    }
+
+    // Delete all related data in parallel
+    await Promise.all([
+      // Delete user's moods
+      Mood.deleteMany({ userId: userId }),
+      // Delete user's goals
+      Goal.deleteMany({ userId: userId }),
+      // Delete user's reminders
+      Reminder.deleteMany({ userId: userId }),
+      // Delete user's messages
+      Message.deleteMany({
+        $or: [{ senderId: userId }, { receiverId: userId }],
+      }),
+      // Delete user's conversations
+      Conversation.deleteMany({
+        $or: [{ user: userId }, { therapist: userId }],
+      }),
+    ]);
+
+    // Delete the user
+    await User.findByIdAndDelete(userId);
+
+    console.log(
+      `✅ User and all related data deleted: ${user.email} (ID: ${userId})`
+    );
+
+    res.json({
+      message: "User and all related data deleted successfully",
+      deletedUser: {
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("Error deleting user:", err);
     res.status(500).json({ message: err.message });
   }
 });

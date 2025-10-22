@@ -54,6 +54,13 @@ function showSection(sectionId) {
       }
     }
   }
+
+  // Special handling for mood section
+  if (sectionId === "mood") {
+    if (typeof initializeMoodTracking === "function") {
+      initializeMoodTracking();
+    }
+  }
 }
 
 // Initialize sidebar active state on page load

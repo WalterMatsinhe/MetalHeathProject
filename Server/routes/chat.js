@@ -287,6 +287,10 @@ router.get("/conversations", auth, async (req, res) => {
   try {
     const therapistId = req.user.id;
 
+    console.log("=== LOADING CONVERSATIONS FOR THERAPIST ===");
+    console.log("Therapist ID:", therapistId);
+    console.log("User role:", req.user.role);
+
     if (req.user.role !== "therapist") {
       return res
         .status(403)
@@ -305,6 +309,8 @@ router.get("/conversations", auth, async (req, res) => {
       .populate("lastMessage.sender", "name firstName lastName")
       .sort({ "lastMessage.timestamp": -1 });
 
+    console.log("Found conversations:", conversations.length);
+
     // Get connected users for online status
     const connectedUsers = req.app.get("connectedUsers") || new Map();
 
@@ -319,44 +325,71 @@ router.get("/conversations", auth, async (req, res) => {
     };
 
     // Transform conversations for frontend
-    const conversationsWithDetails = conversations.map((conv) => {
-      const otherParticipant = conv.getOtherParticipant(therapistId);
-      const unreadCount = conv.unreadCount.get(therapistId.toString()) || 0;
+    const conversationsWithDetails = conversations
+      .map((conv) => {
+        try {
+          const otherParticipant = conv.getOtherParticipant(therapistId);
 
-      // ALWAYS prioritize firstName/lastName over old name field
-      let displayName = "";
-      if (otherParticipant.firstName || otherParticipant.lastName) {
-        displayName = `${otherParticipant.firstName || ""} ${
-          otherParticipant.lastName || ""
-        }`.trim();
-      } else if (otherParticipant.name) {
-        displayName = otherParticipant.name;
-      } else {
-        displayName = otherParticipant.email;
-      }
+          // Skip if otherParticipant is null or undefined
+          if (!otherParticipant) {
+            console.warn(
+              `No other participant found for conversation ${conv._id}`
+            );
+            return null;
+          }
 
-      // Check if user is online
-      const userOnline = isOnline(otherParticipant._id);
+          const unreadCount = conv.unreadCount.get(therapistId.toString()) || 0;
 
-      return {
-        id: conv._id,
-        userId: otherParticipant._id,
-        name: displayName,
-        email: otherParticipant.email,
-        profilePicture: otherParticipant.profilePicture,
-        status: userOnline ? "online" : "offline",
-        isOnline: userOnline,
-        lastMessage: conv.lastMessage.content || "No messages yet",
-        lastMessageTime: conv.lastMessage.timestamp,
-        unreadCount,
-        lastSeen: conv.updatedAt,
-      };
-    });
+          // ALWAYS prioritize firstName/lastName over old name field
+          let displayName = "";
+          if (otherParticipant.firstName || otherParticipant.lastName) {
+            displayName = `${otherParticipant.firstName || ""} ${
+              otherParticipant.lastName || ""
+            }`.trim();
+          } else if (otherParticipant.name) {
+            displayName = otherParticipant.name;
+          } else {
+            displayName = otherParticipant.email || "Unknown User";
+          }
 
+          // Check if user is online
+          const userOnline = isOnline(otherParticipant._id);
+
+          return {
+            id: conv._id,
+            userId: otherParticipant._id,
+            name: displayName,
+            email: otherParticipant.email,
+            profilePicture: otherParticipant.profilePicture,
+            status: userOnline ? "online" : "offline",
+            isOnline: userOnline,
+            lastMessage: conv.lastMessage.content || "No messages yet",
+            lastMessageTime: conv.lastMessage.timestamp,
+            unreadCount,
+            lastSeen: conv.updatedAt,
+          };
+        } catch (err) {
+          console.error(
+            `Error processing conversation ${conv._id}:`,
+            err.message
+          );
+          return null;
+        }
+      })
+      .filter((conv) => conv !== null); // Remove null entries
+
+    console.log(
+      "Returning conversations with details:",
+      conversationsWithDetails.length
+    );
     res.json(conversationsWithDetails);
   } catch (error) {
     console.error("Error fetching conversations:", error);
-    res.status(500).json({ message: "Error fetching conversations" });
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
+      message: "Error fetching conversations",
+      error: error.message,
+    });
   }
 });
 
@@ -364,6 +397,10 @@ router.get("/conversations", auth, async (req, res) => {
 router.get("/my-conversations", auth, async (req, res) => {
   try {
     const userId = req.user.id;
+
+    console.log("=== LOADING CONVERSATIONS FOR USER ===");
+    console.log("User ID:", userId);
+    console.log("User role:", req.user.role);
 
     if (req.user.role === "therapist") {
       return res
@@ -383,6 +420,8 @@ router.get("/my-conversations", auth, async (req, res) => {
       .populate("lastMessage.sender", "name firstName lastName")
       .sort({ "lastMessage.timestamp": -1 });
 
+    console.log("Found conversations:", conversations.length);
+
     // Get connected users for online status
     const connectedUsers = req.app.get("connectedUsers") || new Map();
 
@@ -397,45 +436,72 @@ router.get("/my-conversations", auth, async (req, res) => {
     };
 
     // Transform conversations for frontend
-    const conversationsWithDetails = conversations.map((conv) => {
-      const therapist = conv.getOtherParticipant(userId);
-      const unreadCount = conv.unreadCount.get(userId.toString()) || 0;
+    const conversationsWithDetails = conversations
+      .map((conv) => {
+        try {
+          const therapist = conv.getOtherParticipant(userId);
 
-      // ALWAYS prioritize firstName/lastName over old name field
-      let displayName = "";
-      if (therapist.firstName || therapist.lastName) {
-        displayName = `${therapist.firstName || ""} ${
-          therapist.lastName || ""
-        }`.trim();
-      } else if (therapist.name) {
-        displayName = therapist.name;
-      } else {
-        displayName = therapist.email;
-      }
+          // Skip if therapist is null or undefined
+          if (!therapist) {
+            console.warn(
+              `No other participant found for conversation ${conv._id}`
+            );
+            return null;
+          }
 
-      // Check if therapist is online
-      const therapistOnline = isOnline(therapist._id);
+          const unreadCount = conv.unreadCount.get(userId.toString()) || 0;
 
-      return {
-        id: conv._id,
-        therapistId: therapist._id,
-        name: displayName,
-        email: therapist.email,
-        profilePicture: therapist.profilePicture,
-        specialization: therapist.specialization,
-        status: therapistOnline ? "online" : "offline",
-        isOnline: therapistOnline,
-        lastMessage: conv.lastMessage.content || "No messages yet",
-        lastMessageTime: conv.lastMessage.timestamp,
-        unreadCount,
-        lastSeen: conv.updatedAt,
-      };
-    });
+          // ALWAYS prioritize firstName/lastName over old name field
+          let displayName = "";
+          if (therapist.firstName || therapist.lastName) {
+            displayName = `${therapist.firstName || ""} ${
+              therapist.lastName || ""
+            }`.trim();
+          } else if (therapist.name) {
+            displayName = therapist.name;
+          } else {
+            displayName = therapist.email || "Unknown User";
+          }
 
+          // Check if therapist is online
+          const therapistOnline = isOnline(therapist._id);
+
+          return {
+            id: conv._id,
+            therapistId: therapist._id,
+            name: displayName,
+            email: therapist.email,
+            profilePicture: therapist.profilePicture,
+            specialization: therapist.specialization,
+            status: therapistOnline ? "online" : "offline",
+            isOnline: therapistOnline,
+            lastMessage: conv.lastMessage.content || "No messages yet",
+            lastMessageTime: conv.lastMessage.timestamp,
+            unreadCount,
+            lastSeen: conv.updatedAt,
+          };
+        } catch (err) {
+          console.error(
+            `Error processing conversation ${conv._id}:`,
+            err.message
+          );
+          return null;
+        }
+      })
+      .filter((conv) => conv !== null); // Remove null entries
+
+    console.log(
+      "Returning user conversations with details:",
+      conversationsWithDetails.length
+    );
     res.json(conversationsWithDetails);
   } catch (error) {
     console.error("Error fetching conversations:", error);
-    res.status(500).json({ message: "Error fetching conversations" });
+    console.error("Error stack:", error.stack);
+    res.status(500).json({
+      message: "Error fetching conversations",
+      error: error.message,
+    });
   }
 });
 

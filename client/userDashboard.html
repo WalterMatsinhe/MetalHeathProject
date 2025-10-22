@@ -161,14 +161,14 @@
             <h3 class="dashboard-subtitle">Your Progress Overview</h3>
             <div class="stats-grid">
               <div class="stat-card stat-card-blue">
-                <div class="stat-icon">📊</div>
+                <div class="stat-icon"><i class="fas fa-chart-bar"></i></div>
                 <div class="stat-content">
                   <span class="stat-number" id="dashboardDaysActive">0</span>
                   <span class="stat-label">Days Active</span>
                 </div>
               </div>
               <div class="stat-card stat-card-green">
-                <div class="stat-icon">✅</div>
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
                 <div class="stat-content">
                   <span class="stat-number" id="dashboardSessionsCompleted"
                     >0</span
@@ -177,69 +177,17 @@
                 </div>
               </div>
               <div class="stat-card stat-card-purple">
-                <div class="stat-icon">😊</div>
+                <div class="stat-icon"><i class="fas fa-smile"></i></div>
                 <div class="stat-content">
                   <span class="stat-number" id="dashboardMoodEntries">0</span>
                   <span class="stat-label">Mood Entries</span>
                 </div>
               </div>
               <div class="stat-card stat-card-orange">
-                <div class="stat-icon">🎯</div>
+                <div class="stat-icon"><i class="fas fa-bullseye"></i></div>
                 <div class="stat-content">
                   <span class="stat-number" id="dashboardGoalsAchieved">0</span>
                   <span class="stat-label">Goals Achieved</span>
-                </div>
-              </div>
-            </div>
-          </section>
-          <hr class="dashboard-hr" />
-
-          <!-- Today's Wellness Check -->
-          <section class="wellness-check">
-            <h3 class="dashboard-subtitle">Today's Wellness Check</h3>
-            <div class="wellness-container">
-              <div class="wellness-card">
-                <div class="wellness-header">
-                  <span class="wellness-icon">💭</span>
-                  <h4>How are you feeling today?</h4>
-                </div>
-                <div class="mood-selector">
-                  <button
-                    class="mood-btn"
-                    data-mood="very-happy"
-                    title="Very Happy"
-                  >
-                    😄
-                  </button>
-                  <button class="mood-btn" data-mood="happy" title="Happy">
-                    😊
-                  </button>
-                  <button class="mood-btn" data-mood="neutral" title="Neutral">
-                    😐
-                  </button>
-                  <button class="mood-btn" data-mood="sad" title="Sad">
-                    😢
-                  </button>
-                  <button
-                    class="mood-btn"
-                    data-mood="very-sad"
-                    title="Very Sad"
-                  >
-                    😭
-                  </button>
-                </div>
-                <div class="wellness-notes">
-                  <textarea
-                    id="dailyNotes"
-                    placeholder="Add a note about your day (optional)..."
-                    rows="3"
-                  ></textarea>
-                  <button
-                    class="submit-wellness-btn"
-                    onclick="saveDailyWellness()"
-                  >
-                    Save Today's Check-in
-                  </button>
                 </div>
               </div>
             </div>
@@ -252,7 +200,9 @@
             <div class="activity-container">
               <div class="activity-list" id="activityList">
                 <div class="activity-item">
-                  <div class="activity-icon">📊</div>
+                  <div class="activity-icon">
+                    <i class="fas fa-chart-line"></i>
+                  </div>
                   <div class="activity-content">
                     <h4>Welcome to Mental Health Platform!</h4>
                     <p>
@@ -272,7 +222,7 @@
             <h3 class="dashboard-subtitle">Daily Motivation</h3>
             <div class="tips-container">
               <div class="tip-card">
-                <div class="tip-icon">💡</div>
+                <div class="tip-icon"><i class="fas fa-lightbulb"></i></div>
                 <div class="tip-content">
                   <h4>Today's Tip</h4>
                   <p id="dailyTip">
@@ -283,7 +233,7 @@
                 </div>
               </div>
               <div class="motivation-card">
-                <div class="motivation-icon">⭐</div>
+                <div class="motivation-icon"><i class="fas fa-star"></i></div>
                 <div class="motivation-content">
                   <h4>Daily Affirmation</h4>
                   <p id="dailyAffirmation">
@@ -301,7 +251,7 @@
             <h3 class="dashboard-subtitle">Reminders & Goals</h3>
             <div class="reminders-container">
               <div class="reminder-card">
-                <div class="reminder-icon">🎯</div>
+                <div class="reminder-icon"><i class="fas fa-bullseye"></i></div>
                 <div class="reminder-content">
                   <h4>Daily Goals</h4>
                   <ul class="goals-list">
@@ -325,7 +275,7 @@
                 </div>
               </div>
               <div class="reminder-card">
-                <div class="reminder-icon">⏰</div>
+                <div class="reminder-icon"><i class="fas fa-clock"></i></div>
                 <div class="reminder-content">
                   <h4>Upcoming</h4>
                   <ul class="reminders-list">
@@ -339,14 +289,15 @@
           </section>
 
           <div class="scroll-indicator dashboard-scroll-indicator">
-            <span>↓</span> Explore other sections from the sidebar
+            <span><i class="fas fa-chevron-down"></i></span> Explore other
+            sections from the sidebar
           </div>
         </section>
 
         <section id="awareness" class="content-section content-section-hidden">
           <header class="awareness-header">
-            <h2 class="awareness-title">
-              Mental Health <span class="accent">Awareness</span>
+            <h2 class="title awareness-title">
+              Mental Health<span class="accent"> Awareness</span>
             </h2>
             <p class="awareness-desc">
               Mental health is the foundation of our emotional, psychological,
@@ -581,9 +532,8 @@
         </section>
         <section id="resources" class="content-section content-section-hidden">
           <header class="resources-header">
-            <h2 class="title accent resources-title">
-              <i class="fa-solid fa-phone"></i>&nbsp; Reliable Resources &
-              Contacts in Kenya
+            <h2 class="title resources-title">
+              <i class="fa-solid fa-phone"></i>&nbsp; Reliable<span class="accent"> Resources</span> & Contacts in <span class="accent">Kenya</span>
             </h2>
             <p class="resources-desc">
               Access trusted mental health resources, crisis support, and
@@ -849,13 +799,403 @@
           </aside>
         </section>
         <section id="mood" class="content-section content-section-hidden">
-          <h2>Mood Tracking Tools</h2>
-          <p>To do</p>
+          <header class="mood-header">
+            <h2 class="title mood-title">
+              <i class="fas fa-heart"></i> Mood<span class="accent"> Tracking</span> Tools
+            </h2>
+            <p class="mood-desc">
+              Track your emotional well-being over time. Understanding your mood
+              patterns can help you identify triggers and improve your mental
+              health.
+            </p>
+          </header>
+          <hr class="mood-hr" />
+
+          <!-- Today's Check-in Status -->
+          <section class="mood-section">
+            <div id="todayCheckInStatus" class="check-in-status">
+              <div class="check-in-pending">
+                <span class="pending-icon">⏰</span>
+                <span>Don't forget your daily check-in</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Quick Mood Entry -->
+          <section class="mood-section">
+            <h3 class="accent mood-subtitle">How are you feeling right now?</h3>
+            <form id="moodEntryForm" class="mood-entry-form">
+              <div class="quick-mood-selector">
+                <button
+                  type="button"
+                  class="quick-mood-btn"
+                  data-mood="very-happy"
+                  data-level="5"
+                  title="Very Happy"
+                >
+                  <span class="mood-emoji">😄</span>
+                  <span class="mood-label">Very Happy</span>
+                </button>
+                <button
+                  type="button"
+                  class="quick-mood-btn"
+                  data-mood="happy"
+                  data-level="4"
+                  title="Happy"
+                >
+                  <span class="mood-emoji">😊</span>
+                  <span class="mood-label">Happy</span>
+                </button>
+                <button
+                  type="button"
+                  class="quick-mood-btn"
+                  data-mood="neutral"
+                  data-level="3"
+                  title="Neutral"
+                >
+                  <span class="mood-emoji">😐</span>
+                  <span class="mood-label">Neutral</span>
+                </button>
+                <button
+                  type="button"
+                  class="quick-mood-btn"
+                  data-mood="sad"
+                  data-level="2"
+                  title="Sad"
+                >
+                  <span class="mood-emoji">😢</span>
+                  <span class="mood-label">Sad</span>
+                </button>
+                <button
+                  type="button"
+                  class="quick-mood-btn"
+                  data-mood="very-sad"
+                  data-level="1"
+                  title="Very Sad"
+                >
+                  <span class="mood-emoji">😭</span>
+                  <span class="mood-label">Very Sad</span>
+                </button>
+              </div>
+
+              <div class="mood-details">
+                <div class="form-group">
+                  <label for="moodNotes">Notes (Optional)</label>
+                  <textarea
+                    id="moodNotes"
+                    name="moodNotes"
+                    rows="3"
+                    placeholder="What's on your mind? Any specific reasons for this mood?"
+                  ></textarea>
+                </div>
+
+                <div class="mood-sliders">
+                  <div class="slider-group">
+                    <label for="energyLevel">
+                      Energy Level: <span id="energyValue">3</span>/5
+                    </label>
+                    <input
+                      type="range"
+                      id="energyLevel"
+                      name="energyLevel"
+                      min="1"
+                      max="5"
+                      value="3"
+                      oninput="document.getElementById('energyValue').textContent = this.value"
+                    />
+                  </div>
+
+                  <div class="slider-group">
+                    <label for="stressLevel">
+                      Stress Level: <span id="stressValue">3</span>/5
+                    </label>
+                    <input
+                      type="range"
+                      id="stressLevel"
+                      name="stressLevel"
+                      min="1"
+                      max="5"
+                      value="3"
+                      oninput="document.getElementById('stressValue').textContent = this.value"
+                    />
+                  </div>
+                </div>
+
+                <div class="mood-factors">
+                  <div class="factor-group">
+                    <label>What activities did you do?</label>
+                    <div class="checkbox-grid">
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodActivities"
+                          value="exercise"
+                        />
+                        Exercise
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodActivities"
+                          value="meditation"
+                        />
+                        Meditation
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodActivities"
+                          value="social"
+                        />
+                        Socializing
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodActivities"
+                          value="work"
+                        />
+                        Work/Study
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodActivities"
+                          value="sleep"
+                        />
+                        Rest/Sleep
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodActivities"
+                          value="therapy"
+                        />
+                        Therapy
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodActivities"
+                          value="hobbies"
+                        />
+                        Hobbies
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodActivities"
+                          value="self-care"
+                        />
+                        Self-care
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="factor-group">
+                    <label>What factors influenced your mood?</label>
+                    <div class="checkbox-grid">
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodFactors"
+                          value="stress"
+                        />
+                        Stress
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodFactors"
+                          value="anxiety"
+                        />
+                        Anxiety
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodFactors"
+                          value="relationships"
+                        />
+                        Relationships
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodFactors"
+                          value="work"
+                        />
+                        Work
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodFactors"
+                          value="health"
+                        />
+                        Health
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodFactors"
+                          value="sleep"
+                        />
+                        Sleep Quality
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodFactors"
+                          value="weather"
+                        />
+                        Weather
+                      </label>
+                      <label class="checkbox-label">
+                        <input
+                          type="checkbox"
+                          name="moodFactors"
+                          value="finances"
+                        />
+                        Finances
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="checkbox-label daily-checkin">
+                    <input
+                      type="checkbox"
+                      id="isDailyCheckIn"
+                      name="isDailyCheckIn"
+                    />
+                    Mark as daily check-in
+                  </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary mood-submit-btn">
+                  <span class="btn-icon">✓</span>
+                  Save Mood Entry
+                </button>
+              </div>
+            </form>
+          </section>
+          <hr class="mood-hr" />
+
+          <!-- Mood Statistics -->
+          <section class="mood-section">
+            <div class="mood-stats-header">
+              <h3 class="accent mood-subtitle">Your Mood Statistics</h3>
+              <select id="moodPeriodSelector" class="period-selector">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+            </div>
+
+            <div class="mood-stats-grid">
+              <div class="mood-stat-card">
+                <div class="stat-icon">😊</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="avgMood">N/A</span>
+                  <span class="stat-label">Average Mood</span>
+                </div>
+              </div>
+              <div class="mood-stat-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="avgEnergy">N/A</span>
+                  <span class="stat-label">Average Energy</span>
+                </div>
+              </div>
+              <div class="mood-stat-card">
+                <div class="stat-icon">😰</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="avgStress">N/A</span>
+                  <span class="stat-label">Average Stress</span>
+                </div>
+              </div>
+              <div class="mood-stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="totalMoodEntries">0</span>
+                  <span class="stat-label">Total Entries</span>
+                </div>
+              </div>
+              <div class="mood-stat-card">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-content">
+                  <span class="stat-number" id="checkInStreak">0</span>
+                  <span class="stat-label">Day Streak</span>
+                </div>
+              </div>
+              <div class="mood-stat-card">
+                <div class="stat-icon">🌟</div>
+                <div class="stat-content">
+                  <div class="stat-number" id="bestDay">-</div>
+                  <span class="stat-label">Best Day</span>
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="mood-hr" />
+
+          <!-- Mood Charts -->
+          <section class="mood-section">
+            <h3 class="accent mood-subtitle">Mood Trends & Insights</h3>
+            <div class="mood-charts-grid">
+              <div class="mood-chart-card">
+                <h4 class="chart-title">Mood Over Time</h4>
+                <div class="chart-wrapper">
+                  <canvas id="moodTrendChart"></canvas>
+                </div>
+                <div id="trendSummary" class="chart-summary">
+                  <!-- Trend summary will be loaded here -->
+                </div>
+              </div>
+              <div class="mood-chart-card">
+                <h4 class="chart-title">Mood Distribution</h4>
+                <div class="chart-wrapper">
+                  <canvas id="moodDistributionChart"></canvas>
+                </div>
+                <div id="distributionSummary" class="chart-summary">
+                  <!-- Distribution summary will be loaded here -->
+                </div>
+              </div>
+            </div>
+          </section>
+          <hr class="mood-hr" />
+
+          <!-- Mood Insights -->
+          <section class="mood-section">
+            <h3 class="accent mood-subtitle">Personalized Insights</h3>
+            <div id="moodInsightsContainer" class="mood-insights-container">
+              <!-- Insights will be loaded here dynamically -->
+              <div class="loading-message">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <p>Analyzing your mood patterns...</p>
+              </div>
+            </div>
+          </section>
+          <hr class="mood-hr" />
+
+          <!-- Mood History -->
+          <section class="mood-section">
+            <h3 class="accent mood-subtitle">Mood History</h3>
+            <div id="moodHistoryList" class="mood-history-list">
+              <!-- Mood entries will be loaded here dynamically -->
+              <div class="loading-message">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <p>Loading mood history...</p>
+              </div>
+            </div>
+          </section>
         </section>
         <section id="support" class="content-section content-section-hidden">
           <header class="support-header">
-            <h2 class="title accent support-title">
-              Peer & Professional Support
+            <h2 class="title support-title">
+              Peer &<span class="accent"> Professional</span> Support
             </h2>
             <p class="support-desc">
               Connect with peers, join support groups, or reach out to mental
@@ -953,43 +1293,10 @@
             </div>
           </section>
           <hr class="support-hr" />
-
-          <!-- Other Support Options -->
-          <section class="support-section">
-            <h3 class="accent support-subtitle">💬 Other Support Options</h3>
-            <div class="support-options-grid">
-              <div class="support-option-card">
-                <span class="support-option-icon">💭</span>
-                <strong>Peer Support Groups</strong>
-                <p>
-                  Join moderated group discussions with others facing similar
-                  challenges
-                </p>
-                <button class="btn btn-outline">Join Group Chat</button>
-              </div>
-              <div class="support-option-card">
-                <span class="support-option-icon">📝</span>
-                <strong>Professional Counseling</strong>
-                <p>
-                  Schedule appointments with licensed mental health
-                  professionals
-                </p>
-                <button class="btn btn-outline">Book Appointment</button>
-              </div>
-              <div class="support-option-card">
-                <span class="support-option-icon">💬</span>
-                <strong>Chat with Therapists</strong>
-                <p>Connect and communicate directly with licensed therapists</p>
-                <button class="btn btn-outline" onclick="showSection('chat')">
-                  Start Chat
-                </button>
-              </div>
-            </div>
-          </section>
         </section>
         <section id="profile" class="content-section content-section-hidden">
           <header class="profile-header">
-            <h2 class="title accent profile-title">Your Profile</h2>
+            <h2 class="title profile-title">Your<span class="accent"> Profile</span></h2>
             <p class="profile-desc">
               Manage your personal information, track your mental health
               journey, and customize your experience.
@@ -1315,7 +1622,7 @@
         <!-- Chat Section -->
         <section id="chat" class="content-section content-section-hidden">
           <header class="chat-header">
-            <h2 class="title accent chat-title">Chat with Therapists</h2>
+            <h2 class="title chat-title">Chat with<span class="accent"> Therapists</span></h2>
             <p class="chat-desc">
               Connect and communicate directly with licensed mental health
               professionals for personalized support and guidance.
@@ -1449,6 +1756,9 @@
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
+    <!-- Chart.js for mood tracking charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
     <!-- Organized JavaScript Files -->
     <script src="js/utils.js"></script>
     <script src="js/auth.js"></script>
@@ -1457,6 +1767,8 @@
     <script src="js/profile.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/charts.js"></script>
+    <script src="js/mood.js"></script>
+    <script src="js/goals.js"></script>
     <script src="js/notifications.js"></script>
     <script src="js/sidebar.js"></script>
     <script src="js/chat.js"></script>

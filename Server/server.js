@@ -52,12 +52,18 @@ app.use("/api/auth", authRoutes);
 app.use("/api/profile", require("./routes/profile"));
 app.use("/api/chat", require("./routes/chat"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/mood", require("./routes/mood"));
+app.use("/api/goals", require("./routes/goals"));
+app.use("/api/reminders", require("./routes/reminders"));
 
 console.log("✅ All routes registered:");
 console.log("  - /api/auth");
 console.log("  - /api/profile");
 console.log("  - /api/chat");
 console.log("  - /api/admin");
+console.log("  - /api/mood");
+console.log("  - /api/goals");
+console.log("  - /api/reminders");
 
 // Import models for Socket.IO usage
 const Conversation = require("./models/Conversation");

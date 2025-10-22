@@ -3,30 +3,36 @@
 // ============================================
 
 // Initialize visual charts for dashboard
-function initializeVisualCharts() {
+async function initializeVisualCharts() {
   if (!window.location.pathname.includes("userDashboard")) {
     return;
   }
 
-  // Initialize all charts
-  initMoodTrendChart();
-  initActivityChart();
-  initWellnessGauge();
-  initProgressChart();
+  console.log("Initializing dashboard visual charts...");
+
+  // Initialize all charts (all async now for real data)
+  await initProgressChart();
+  await initActivityChart();
+  await initWellnessGauge();
+
+  console.log("Dashboard charts initialized");
 }
 
-// Mood Trend Line Chart
-function initMoodTrendChart() {
-  const canvas = document.getElementById("moodTrendChart");
+// Note: Mood trend chart is handled in mood.js for the mood tracking section
+// This function is kept for potential future use but not currently called
+
+// Mood Trend Line Chart (not used in dashboard - see mood.js)
+async function initDashboardMoodTrendChart() {
+  const canvas = document.getElementById("dashboardMoodTrend");
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
   const width = (canvas.width = canvas.offsetWidth);
   const height = (canvas.height = canvas.offsetHeight);
 
-  // Sample mood data (1-5 scale)
-  const moodData = [3, 4, 2, 4, 5, 3, 4, 3, 5, 4, 3, 4, 5, 3];
-  const labels = [
+  // Get real mood data from server
+  let moodData = [3, 4, 2, 4, 5, 3, 4, 3, 5, 4, 3, 4, 5, 3]; // Default
+  let labels = [
     "Mon",
     "Tue",
     "Wed",
@@ -42,6 +48,36 @@ function initMoodTrendChart() {
     "Sat",
     "Sun",
   ];
+
+  try {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      const response = await fetch(
+        "http://localhost:5000/api/mood/trend?days=14",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (response.ok && data.trend && data.trend.length > 0) {
+        // Sort by date
+        const sortedTrend = data.trend.sort(
+          (a, b) => new Date(a._id) - new Date(b._id)
+        );
+
+        moodData = sortedTrend.map((t) => t.averageMood || 3);
+        labels = sortedTrend.map((t) => {
+          const date = new Date(t._id);
+          return date.toLocaleDateString("en-US", { weekday: "short" });
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error loading mood trend data:", error);
+  }
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
@@ -121,7 +157,7 @@ function initMoodTrendChart() {
 }
 
 // Activity Bar Chart
-function initActivityChart() {
+async function initActivityChart() {
   const canvas = document.getElementById("activityChart");
   if (!canvas) return;
 
@@ -129,14 +165,59 @@ function initActivityChart() {
   const width = (canvas.width = canvas.offsetWidth);
   const height = (canvas.height = canvas.offsetHeight);
 
-  // Activity data
-  const activities = [
+  // Activity data - will be enhanced with real data from mood activities
+  let activities = [
     { name: "Meditation", hours: 5, color: "#00bfff" },
     { name: "Exercise", hours: 8, color: "#0099cc" },
     { name: "Journaling", hours: 3, color: "#0066cc" },
     { name: "Therapy", hours: 4, color: "#1976d2" },
     { name: "Reading", hours: 6, color: "#2c3e50" },
   ];
+
+  // Try to get real activity data from mood entries
+  try {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      const response = await fetch("http://localhost:5000/api/mood?days=30", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok && data.moods && data.moods.length > 0) {
+        // Count activities from mood entries
+        const activityCounts = {};
+        data.moods.forEach((mood) => {
+          if (mood.activities && Array.isArray(mood.activities)) {
+            mood.activities.forEach((activity) => {
+              activityCounts[activity] = (activityCounts[activity] || 0) + 1;
+            });
+          }
+        });
+
+        // Convert to chart format if we have data
+        if (Object.keys(activityCounts).length > 0) {
+          const colors = [
+            "#00bfff",
+            "#0099cc",
+            "#0066cc",
+            "#1976d2",
+            "#2c3e50",
+          ];
+          activities = Object.entries(activityCounts)
+            .slice(0, 5)
+            .map(([name, count], index) => ({
+              name: name.charAt(0).toUpperCase() + name.slice(1),
+              hours: count,
+              color: colors[index % colors.length],
+            }));
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error loading activity data:", error);
+  }
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
@@ -172,7 +253,7 @@ function initActivityChart() {
 }
 
 // Wellness Gauge Chart
-function initWellnessGauge() {
+async function initWellnessGauge() {
   const canvas = document.getElementById("wellnessGauge");
   if (!canvas) return;
 
@@ -184,7 +265,39 @@ function initWellnessGauge() {
   const centerX = width / 2;
   const centerY = height / 2 + 20;
   const radius = Math.min(width, height) / 3;
-  const wellnessScore = 75; // Sample score out of 100
+  let wellnessScore = 75; // Default score out of 100
+
+  // Calculate wellness score from real data
+  try {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      const response = await fetch(
+        "http://localhost:5000/api/mood/stats?days=30",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (response.ok && data.stats) {
+        // Calculate wellness score based on:
+        // - Average mood (40% weight)
+        // - Average energy (30% weight)
+        // - Inverse of stress (30% weight)
+        const avgMood = data.stats.averageMood || 3;
+        const avgEnergy = data.stats.averageEnergy || 3;
+        const avgStress = data.stats.averageStress || 3;
+
+        wellnessScore = Math.round(
+          (avgMood / 5) * 40 + (avgEnergy / 5) * 30 + ((5 - avgStress) / 5) * 30
+        );
+      }
+    }
+  } catch (error) {
+    console.error("Error calculating wellness score:", error);
+  }
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
@@ -215,7 +328,7 @@ function initWellnessGauge() {
 }
 
 // Progress Doughnut Chart
-function initProgressChart() {
+async function initProgressChart() {
   const canvas = document.getElementById("progressChart");
   if (!canvas) return;
 
@@ -223,12 +336,53 @@ function initProgressChart() {
   const width = (canvas.width = canvas.offsetWidth);
   const height = (canvas.height = canvas.offsetHeight);
 
-  // Progress data
-  const goals = [
+  // Progress data based on mood entries and check-in streak
+  let goals = [
     { name: "Completed", value: 7, color: "#00bfff" },
     { name: "In Progress", value: 3, color: "#0099cc" },
     { name: "Pending", value: 2, color: "#0066cc" },
   ];
+
+  // Calculate goals from real data
+  try {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      const response = await fetch(
+        "http://localhost:5000/api/mood/stats?days=30",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (response.ok && data.stats) {
+        const checkInStreak = data.stats.checkInStreak || 0;
+        const totalEntries = data.stats.totalEntries || 0;
+
+        // Calculate goals based on check-ins
+        // Completed: check-in streak
+        // In Progress: half of remaining days in month
+        // Pending: remaining days
+        const daysInMonth = 30;
+        const completed = Math.min(checkInStreak, daysInMonth);
+        const inProgress = Math.min(
+          Math.floor((daysInMonth - completed) / 2),
+          10
+        );
+        const pending = Math.max(daysInMonth - completed - inProgress, 0);
+
+        goals = [
+          { name: "Completed", value: completed, color: "#00bfff" },
+          { name: "In Progress", value: inProgress, color: "#0099cc" },
+          { name: "Pending", value: pending, color: "#0066cc" },
+        ];
+      }
+    }
+  } catch (error) {
+    console.error("Error loading progress data:", error);
+  }
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height);

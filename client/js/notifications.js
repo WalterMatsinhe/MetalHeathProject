@@ -2,70 +2,358 @@
 // NOTIFICATION SYSTEM
 // ============================================
 
-// Function to update notification names with real user data
-async function updateNotificationNames() {
+// Notification state management
+let notificationState = {
+  user: {
+    unread: 0,
+    notifications: [],
+    lastFetch: null,
+  },
+  therapist: {
+    unread: 0,
+    notifications: [],
+    lastFetch: null,
+  },
+};
+
+// Function to fetch real-time notifications for users
+async function fetchUserNotifications() {
   try {
-    // Get real user data from conversations
-    const response = await fetch("/api/chat/conversations", {
+    const notifications = [];
+
+    // Fetch unread messages count
+    const chatResponse = await fetch("/api/chat/unread-count", {
       headers: getAuthHeaders(),
     });
-
-    if (response.ok) {
-      const conversations = await response.json();
-
-      if (conversations.length > 0) {
-        // Update the session request with real user name
-        const sessionRequestElement = document.getElementById(
-          "session-request-user"
-        );
-        if (sessionRequestElement && conversations[0]) {
-          const userName = conversations[0].name || "User";
-          sessionRequestElement.textContent = `${userName} • 30 minutes ago`;
-        }
+    if (chatResponse.ok) {
+      const { unreadCount } = await chatResponse.json();
+      if (unreadCount > 0) {
+        notifications.push({
+          id: `chat-${Date.now()}`,
+          type: "chat",
+          icon: "fa-comments",
+          iconBg: "#e1f5fe",
+          iconColor: "#00bfff",
+          title: "New Messages",
+          message: `You have ${unreadCount} unread message${
+            unreadCount > 1 ? "s" : ""
+          } from therapists`,
+          time: "Just now",
+          timestamp: new Date(),
+          priority: "high",
+          action: "chat",
+        });
       }
     }
+
+    // Fetch overdue reminders
+    const remindersResponse = await fetch("/api/reminders/overdue", {
+      headers: getAuthHeaders(),
+    });
+    if (remindersResponse.ok) {
+      const { reminders } = await remindersResponse.json();
+      reminders.slice(0, 3).forEach((reminder, index) => {
+        notifications.push({
+          id: `reminder-${reminder._id}`,
+          type: "reminder",
+          icon: "fa-bell",
+          iconBg: "#fff3e0",
+          iconColor: "#ff9800",
+          title: reminder.title,
+          message: reminder.description || "You have a pending reminder",
+          time: formatTimeAgo(new Date(reminder.reminderTime)),
+          timestamp: new Date(reminder.reminderTime),
+          priority: "medium",
+          action: "reminders",
+          data: reminder,
+        });
+      });
+    }
+
+    // Fetch upcoming reminders
+    const upcomingResponse = await fetch("/api/reminders/upcoming?days=1", {
+      headers: getAuthHeaders(),
+    });
+    if (upcomingResponse.ok) {
+      const { reminders } = await upcomingResponse.json();
+      reminders.slice(0, 2).forEach((reminder) => {
+        notifications.push({
+          id: `upcoming-${reminder._id}`,
+          type: "upcoming",
+          icon: "fa-clock",
+          iconBg: "#e3f2fd",
+          iconColor: "#2196f3",
+          title: "Upcoming: " + reminder.title,
+          message: reminder.description || "Coming up soon",
+          time: formatTimeAgo(new Date(reminder.reminderTime)),
+          timestamp: new Date(reminder.reminderTime),
+          priority: "low",
+          action: "reminders",
+          data: reminder,
+        });
+      });
+    }
+
+    // Check if daily mood check-in is done
+    const moodCheckResponse = await fetch("/api/mood/today/check", {
+      headers: getAuthHeaders(),
+    });
+    if (moodCheckResponse.ok) {
+      const { hasCheckedIn } = await moodCheckResponse.json();
+      if (!hasCheckedIn) {
+        notifications.push({
+          id: "mood-checkin",
+          type: "mood",
+          icon: "fa-face-smile",
+          iconBg: "#e8f5e8",
+          iconColor: "#4caf50",
+          title: "Daily Mood Check-in",
+          message: "Track your mood to identify patterns and triggers",
+          time: "Today",
+          timestamp: new Date(),
+          priority: "medium",
+          action: "mood",
+        });
+      }
+    }
+
+    // Fetch goal achievements
+    const goalsResponse = await fetch("/api/goals/stats", {
+      headers: getAuthHeaders(),
+    });
+    if (goalsResponse.ok) {
+      const { stats } = await goalsResponse.json();
+      if (stats.completedToday > 0) {
+        notifications.push({
+          id: "goals-achievement",
+          type: "achievement",
+          icon: "fa-trophy",
+          iconBg: "#fff9c4",
+          iconColor: "#f9a825",
+          title: "Goal Achievement! 🎉",
+          message: `Congratulations! You've completed ${
+            stats.completedToday
+          } goal${stats.completedToday > 1 ? "s" : ""} today`,
+          time: "Today",
+          timestamp: new Date(),
+          priority: "low",
+          action: "goals",
+        });
+      }
+    }
+
+    // Sort notifications by priority and timestamp
+    notifications.sort((a, b) => {
+      const priorityWeight = { high: 3, medium: 2, low: 1 };
+      if (priorityWeight[a.priority] !== priorityWeight[b.priority]) {
+        return priorityWeight[b.priority] - priorityWeight[a.priority];
+      }
+      return b.timestamp - a.timestamp;
+    });
+
+    notificationState.user.notifications = notifications;
+    notificationState.user.unread = notifications.length;
+    notificationState.user.lastFetch = new Date();
+
+    return notifications;
   } catch (error) {
-    console.error("Error updating notification names:", error);
+    console.error("Error fetching user notifications:", error);
+    return [];
   }
 }
 
+// Function to fetch real-time notifications for therapists
+async function fetchTherapistNotifications() {
+  try {
+    const notifications = [];
+
+    // Fetch unread messages from users
+    const chatResponse = await fetch("/api/chat/unread-count", {
+      headers: getAuthHeaders(),
+    });
+    if (chatResponse.ok) {
+      const { unreadCount } = await chatResponse.json();
+      if (unreadCount > 0) {
+        notifications.push({
+          id: `chat-${Date.now()}`,
+          type: "urgent",
+          icon: "fa-envelope",
+          iconBg: "#fee",
+          iconColor: "#dc3545",
+          title: "New Messages from Users",
+          message: `You have ${unreadCount} unread message${
+            unreadCount > 1 ? "s" : ""
+          } from users`,
+          time: "Just now",
+          timestamp: new Date(),
+          priority: "high",
+          action: "chat",
+        });
+      }
+    }
+
+    // Fetch conversations to get detailed message info
+    const conversationsResponse = await fetch("/api/chat/conversations", {
+      headers: getAuthHeaders(),
+    });
+    if (conversationsResponse.ok) {
+      const conversations = await conversationsResponse.json();
+
+      // Add notifications for each conversation with unread messages
+      conversations
+        .filter((conv) => conv.unreadCount > 0)
+        .slice(0, 5)
+        .forEach((conv, index) => {
+          const priority = index === 0 ? "high" : "medium";
+          notifications.push({
+            id: `conv-${conv.id}`,
+            type: "message",
+            icon: "fa-comment-dots",
+            iconBg: priority === "high" ? "#fff5f5" : "#e3f2fd",
+            iconColor: priority === "high" ? "#e53e3e" : "#2196f3",
+            title: `Message from ${conv.name}`,
+            message: conv.lastMessage || "New message received",
+            time: formatTimeAgo(new Date(conv.lastMessageTime)),
+            timestamp: new Date(conv.lastMessageTime),
+            priority: priority,
+            action: "chat",
+            data: conv,
+          });
+        });
+    }
+
+    // Add sample appointment notifications (can be extended with real appointment system)
+    const now = new Date();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    notifications.push({
+      id: "appointments-today",
+      type: "appointment",
+      icon: "fa-calendar-check",
+      iconBg: "#e8f5e8",
+      iconColor: "#4caf50",
+      title: "Today's Schedule",
+      message: "Check your appointments and tasks for today",
+      time: "Today",
+      timestamp: todayStart,
+      priority: "medium",
+      action: "dashboard",
+    });
+
+    // Sort notifications by priority and timestamp
+    notifications.sort((a, b) => {
+      const priorityWeight = { high: 3, medium: 2, low: 1 };
+      if (priorityWeight[a.priority] !== priorityWeight[b.priority]) {
+        return priorityWeight[b.priority] - priorityWeight[a.priority];
+      }
+      return b.timestamp - a.timestamp;
+    });
+
+    notificationState.therapist.notifications = notifications;
+    notificationState.therapist.unread = notifications.length;
+    notificationState.therapist.lastFetch = new Date();
+
+    return notifications;
+  } catch (error) {
+    console.error("Error fetching therapist notifications:", error);
+    return [];
+  }
+}
+
+// Helper function to format time ago
+function formatTimeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+
+  if (seconds < 60) return "Just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
+  return date.toLocaleDateString();
+}
+
 // Notification functionality
-let unreadNotifications = 5; // Default number of unread notifications
+let unreadNotifications = 0; // Will be updated from API
 
 // Update notification badge
-function updateNotificationBadge() {
+async function updateNotificationBadge() {
   const badge = document.getElementById("notification-badge");
   if (badge) {
-    if (unreadNotifications > 0) {
-      badge.textContent =
-        unreadNotifications > 99 ? "99+" : unreadNotifications.toString();
-      badge.style.display = "flex";
-    } else {
+    try {
+      // Fetch fresh notifications
+      await fetchUserNotifications();
+      const count = notificationState.user.unread;
+
+      if (count > 0) {
+        badge.textContent = count > 99 ? "99+" : count.toString();
+        badge.style.display = "flex";
+      } else {
+        badge.style.display = "none";
+      }
+    } catch (error) {
+      console.error("Error updating notification badge:", error);
       badge.style.display = "none";
     }
   }
 }
 
-// Function to add new notifications (for demonstration)
+// Update therapist notification badge
+async function updateTherapistNotificationBadge() {
+  const badge = document.getElementById("therapist-notification-badge");
+  if (badge) {
+    try {
+      // Fetch fresh notifications
+      await fetchTherapistNotifications();
+      const count = notificationState.therapist.unread;
+
+      if (count > 0) {
+        badge.textContent = count > 99 ? "99+" : count.toString();
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+    } catch (error) {
+      console.error("Error updating therapist notification badge:", error);
+      badge.style.display = "none";
+    }
+  }
+}
+
+// Function to add new notifications (for real-time updates)
 function addNewNotification() {
   unreadNotifications++;
   updateNotificationBadge();
 }
 
-// Simulate new notifications arriving periodically (optional demo feature)
-function startNotificationDemo() {
-  setInterval(() => {
-    if (Math.random() < 0.1) {
-      // 10% chance every interval
-      addNewNotification();
+// Auto-refresh notifications periodically
+function startNotificationAutoRefresh() {
+  const isTherapist = window.location.pathname.includes("therapistDashboard");
+
+  // Refresh every 30 seconds
+  setInterval(async () => {
+    if (isTherapist) {
+      await updateTherapistNotificationBadge();
+    } else {
+      await updateNotificationBadge();
     }
-  }, 30000); // Check every 30 seconds
+  }, 30000);
 }
 
 function showNotifications() {
+  // Fetch latest notifications first
+  fetchUserNotifications().then((notifications) => {
+    displayNotificationPanel(notifications, false);
+  });
+}
+
+function displayNotificationPanel(notifications, isTherapist = false) {
   // Create notification overlay
   const overlay = document.createElement("div");
-  overlay.id = "notification-overlay";
+  overlay.id = isTherapist
+    ? "therapist-notification-overlay"
+    : "notification-overlay";
   overlay.style.cssText = `
     position: fixed;
     top: 0;
@@ -86,7 +374,7 @@ function showNotifications() {
     background: white;
     border-radius: 10px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    width: 350px;
+    width: ${isTherapist ? "400px" : "350px"};
     max-height: 80vh;
     overflow-y: auto;
     margin-top: 60px;
@@ -103,98 +391,102 @@ function showNotifications() {
   `;
   document.head.appendChild(style);
 
+  // Build notification items HTML
+  let notificationsHTML = "";
+
+  if (notifications.length === 0) {
+    notificationsHTML = `
+      <div style="padding: 40px 20px; text-align: center; color: #999;">
+        <i class="fa-solid fa-bell-slash" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+        <p style="margin: 0;">No new notifications</p>
+      </div>
+    `;
+  } else {
+    notifications.forEach((notif) => {
+      const bgColor =
+        notif.priority === "high"
+          ? "#fff5f5"
+          : notif.priority === "medium"
+          ? "#f8f9fa"
+          : "white";
+
+      notificationsHTML += `
+        <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer; background: ${bgColor};" 
+             onclick="handleNotificationClick('${notif.action}', '${
+        notif.id
+      }', ${isTherapist})">
+          <div style="display: flex; align-items: center;">
+            <div style="width: 40px; height: 40px; background: ${
+              notif.iconBg
+            }; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+              <i class="fa-solid ${notif.icon}" style="color: ${
+        notif.iconColor
+      };"></i>
+            </div>
+            <div style="flex: 1;">
+              <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333; font-weight: ${
+                notif.priority === "high" ? "bold" : "600"
+              };">${notif.title}</h4>
+              <p style="margin: 0; font-size: 12px; color: #666;">${
+                notif.message
+              }</p>
+              <span style="font-size: 11px; color: #999;">${notif.time}</span>
+            </div>
+            ${
+              notif.priority === "high" || notif.type === "urgent"
+                ? '<div style="width: 8px; height: 8px; background: #dc3545; border-radius: 50%;"></div>'
+                : ""
+            }
+          </div>
+        </div>
+      `;
+    });
+  }
+
   // Notification content
+  const title = isTherapist ? "Messages from Users" : "Notifications";
+  const icon = isTherapist ? "fa-envelope" : "fa-bell";
+
   panel.innerHTML = `
     <div style="padding: 20px; border-bottom: 1px solid #eee;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="margin: 0; color: #333; display: flex; align-items: center;">
-          <i class="fa-solid fa-bell" style="margin-right: 10px; color: #007bff;"></i>
-          Notifications
+          <i class="fa-solid ${icon}" style="margin-right: 10px; color: #007bff;"></i>
+          ${title}
         </h3>
-        <button onclick="closeNotifications()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #666;">
+        <button onclick="${
+          isTherapist ? "closeTherapistNotifications" : "closeNotifications"
+        }()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #666;">
           <i class="fa-solid fa-times"></i>
         </button>
       </div>
     </div>
     
     <div style="padding: 0;">
-      <!-- Wellness Reminder -->
-      <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer;" onclick="handleNotificationClick('wellness')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #e3f2fd; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-heart-pulse" style="color: #2196f3;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">Daily Wellness Check</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">Don't forget to complete your wellness check-in today!</p>
-            <span style="font-size: 11px; color: #999;">2 hours ago</span>
-          </div>
-          <div style="width: 8px; height: 8px; background: #2196f3; border-radius: 50%;"></div>
-        </div>
-      </div>
-
-      <!-- Mood Tracking -->
-      <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer;" onclick="handleNotificationClick('mood')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #f3e5f5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-face-smile" style="color: #9c27b0;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">Mood Tracking Reminder</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">Track your mood to identify patterns and triggers</p>
-            <span style="font-size: 11px; color: #999;">5 hours ago</span>
-          </div>
-          <div style="width: 8px; height: 8px; background: #9c27b0; border-radius: 50%;"></div>
-        </div>
-      </div>
-
-      <!-- Goal Achievement -->
-      <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer;" onclick="handleNotificationClick('goals')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #e8f5e8; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-trophy" style="color: #4caf50;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">Goal Milestone Reached!</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">Congratulations! You've completed 3 wellness sessions</p>
-            <span style="font-size: 11px; color: #999;">1 day ago</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Resource Suggestion -->
-      <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer;" onclick="handleNotificationClick('resources')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #fff3e0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-lightbulb" style="color: #ff9800;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">New Resource Available</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">Check out our new mindfulness exercises in the resources section</p>
-            <span style="font-size: 11px; color: #999;">2 days ago</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Support Group -->
-      <div class="notification-item" style="padding: 15px 20px; cursor: pointer;" onclick="handleNotificationClick('support')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #fce4ec; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-users" style="color: #e91e63;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">Support Group Meeting</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">Weekly support group session starts in 30 minutes</p>
-            <span style="font-size: 11px; color: #999;">3 days ago</span>
-          </div>
-        </div>
-      </div>
+      ${notificationsHTML}
     </div>
 
     <div style="padding: 15px 20px; background: #f8f9fa; border-radius: 0 0 10px 10px;">
-      <button onclick="markAllAsRead()" style="width: 100%; padding: 8px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">
-        Mark All as Read
-      </button>
+      ${
+        notifications.length > 0
+          ? `
+        <button onclick="${
+          isTherapist ? "markAllTherapistMessagesAsRead" : "markAllAsRead"
+        }()" style="width: 100%; padding: 8px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; margin-bottom: 8px;">
+          Mark All as Read
+        </button>
+      `
+          : ""
+      }
+      ${
+        isTherapist
+          ? `
+        <button onclick="closeTherapistNotifications(); showSection('chat');" style="width: 100%; padding: 8px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">
+          Go to Chat
+        </button>
+      `
+          : ""
+      }
     </div>
   `;
 
@@ -204,18 +496,23 @@ function showNotifications() {
   // Close on overlay click
   overlay.addEventListener("click", function (e) {
     if (e.target === overlay) {
-      closeNotifications();
+      if (isTherapist) {
+        closeTherapistNotifications();
+      } else {
+        closeNotifications();
+      }
     }
   });
 
   // Add hover effects
   const notificationItems = panel.querySelectorAll(".notification-item");
   notificationItems.forEach((item) => {
+    const originalBg = item.style.background;
     item.addEventListener("mouseenter", function () {
-      this.style.backgroundColor = "#f8f9fa";
+      this.style.background = "#e9ecef";
     });
     item.addEventListener("mouseleave", function () {
-      this.style.backgroundColor = "transparent";
+      this.style.background = originalBg;
     });
   });
 }
@@ -228,258 +525,99 @@ function closeNotifications() {
   }
 }
 
-// Handle notification clicks
-function handleNotificationClick(type) {
-  // Decrease unread count when a notification is clicked
-  if (unreadNotifications > 0) {
-    unreadNotifications--;
-    updateNotificationBadge();
+// Handle notification clicks with real navigation
+function handleNotificationClick(action, notificationId, isTherapist = false) {
+  // Mark this notification as read
+  if (isTherapist) {
+    const index = notificationState.therapist.notifications.findIndex(
+      (n) => n.id === notificationId
+    );
+    if (index !== -1) {
+      notificationState.therapist.notifications.splice(index, 1);
+      notificationState.therapist.unread =
+        notificationState.therapist.notifications.length;
+      updateTherapistNotificationBadge();
+    }
+    closeTherapistNotifications();
+  } else {
+    const index = notificationState.user.notifications.findIndex(
+      (n) => n.id === notificationId
+    );
+    if (index !== -1) {
+      notificationState.user.notifications.splice(index, 1);
+      notificationState.user.unread =
+        notificationState.user.notifications.length;
+      updateNotificationBadge();
+    }
+    closeNotifications();
   }
 
-  closeNotifications();
-
-  switch (type) {
-    case "wellness":
-      // Scroll to wellness check section
-      const wellnessSection = document.querySelector(".wellness-check");
-      if (wellnessSection) {
-        wellnessSection.scrollIntoView({ behavior: "smooth" });
+  // Navigate based on action
+  switch (action) {
+    case "chat":
+      if (typeof showSection === "function") {
+        showSection("chat");
       }
       break;
     case "mood":
-      // Navigate to mood tracking section
       if (typeof showSection === "function") {
         showSection("mood");
       }
       break;
     case "goals":
-      // Scroll to goals section
-      const goalsSection = document.querySelector(".reminders");
-      if (goalsSection) {
-        goalsSection.scrollIntoView({ behavior: "smooth" });
+    case "reminders":
+      const section = document.getElementById("goals");
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth" });
       }
       break;
     case "resources":
-      // Navigate to resources section
       if (typeof showSection === "function") {
         showSection("resources");
       }
       break;
     case "support":
-      // Navigate to support section
       if (typeof showSection === "function") {
         showSection("support");
+      }
+      break;
+    case "dashboard":
+      if (typeof showSection === "function") {
+        showSection("dashboard");
       }
       break;
   }
 }
 
 // Mark all notifications as read
-function markAllAsRead() {
-  const notificationDots = document.querySelectorAll(
-    '#notification-overlay .notification-item div[style*="border-radius: 50%"]:last-child'
-  );
-  notificationDots.forEach((dot) => {
-    if (dot.style.background !== "transparent") {
-      dot.style.background = "#ddd";
-    }
-  });
+async function markAllAsRead() {
+  try {
+    // Clear all user notifications
+    notificationState.user.notifications = [];
+    notificationState.user.unread = 0;
 
-  // Reset unread notifications count
-  unreadNotifications = 0;
-  updateNotificationBadge();
+    // Update UI
+    updateNotificationBadge();
 
-  // Show success message
-  const button = event.target;
-  const originalText = button.textContent;
-  button.textContent = "Marked as Read ✓";
-  button.style.background = "#28a745";
+    // Show success message
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = "Marked as Read ✓";
+    button.style.background = "#28a745";
 
-  setTimeout(() => {
-    button.textContent = originalText;
-    button.style.background = "#007bff";
-  }, 2000);
+    setTimeout(() => {
+      closeNotifications();
+    }, 1000);
+  } catch (error) {
+    console.error("Error marking notifications as read:", error);
+  }
 }
 
 // Therapist Notification System
 function showTherapistNotifications() {
-  // Create notification overlay
-  const overlay = document.createElement("div");
-  overlay.id = "therapist-notification-overlay";
-  overlay.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-end;
-    padding: 20px;
-  `;
-
-  // Create notification panel
-  const panel = document.createElement("div");
-  panel.style.cssText = `
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    width: 400px;
-    max-height: 80vh;
-    overflow-y: auto;
-    margin-top: 60px;
-    animation: slideInRight 0.3s ease-out;
-  `;
-
-  // Add slide-in animation
-  const style = document.createElement("style");
-  style.textContent = `
-    @keyframes slideInRight {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-  `;
-  document.head.appendChild(style);
-
-  // Notification content with user messages
-  panel.innerHTML = `
-    <div style="padding: 20px; border-bottom: 1px solid #eee;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="margin: 0; color: #333; display: flex; align-items: center;">
-          <i class="fa-solid fa-envelope" style="margin-right: 10px; color: #007bff;"></i>
-          Messages from Users
-        </h3>
-        <button onclick="closeTherapistNotifications()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #666;">
-          <i class="fa-solid fa-times"></i>
-        </button>
-      </div>
-    </div>
-    
-    <div style="padding: 0;">
-      <!-- Urgent Support Request -->
-      <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer; background: #fff5f5;" onclick="handleTherapistNotificationClick('urgent-support')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #fee; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-exclamation-triangle" style="color: #dc3545;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333; font-weight: bold;">Urgent Support Request</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">"I'm having severe anxiety and need immediate help"</p>
-            <span style="font-size: 11px; color: #999;">Sarah M. • 5 minutes ago</span>
-          </div>
-          <div style="width: 8px; height: 8px; background: #dc3545; border-radius: 50%;"></div>
-        </div>
-      </div>
-
-      <!-- Crisis Intervention Request -->
-      <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer; background: #fff9f9;" onclick="handleTherapistNotificationClick('crisis')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #fff0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-heart-pulse" style="color: #e53e3e;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333; font-weight: bold;">Crisis Intervention Needed</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">"Feeling overwhelmed and having thoughts of self-harm"</p>
-            <span style="font-size: 11px; color: #999;">Anonymous User • 15 minutes ago</span>
-          </div>
-          <div style="width: 8px; height: 8px; background: #e53e3e; border-radius: 50%;"></div>
-        </div>
-      </div>
-
-      <!-- Session Request -->
-      <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer;" onclick="handleTherapistNotificationClick('session-request')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #e3f2fd; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-video" style="color: #2196f3;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">Video Session Request</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">"Would like to schedule a session to discuss anxiety management"</p>
-            <span style="font-size: 11px; color: #999;" id="session-request-user">User • 30 minutes ago</span>
-          </div>
-          <div style="width: 8px; height: 8px; background: #2196f3; border-radius: 50%;"></div>
-        </div>
-      </div>
-
-      <!-- Follow-up Message -->
-      <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer;" onclick="handleTherapistNotificationClick('followup')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #f3e5f5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-comment-dots" style="color: #9c27b0;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">Follow-up Message</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">"Thank you for yesterday's session. Feeling much better!"</p>
-            <span style="font-size: 11px; color: #999;">Maria L. • 1 hour ago</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Feedback Request -->
-      <div class="notification-item" style="padding: 15px 20px; border-bottom: 1px solid #f0f0f0; cursor: pointer;" onclick="handleTherapistNotificationClick('feedback')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #e8f5e8; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-star" style="color: #4caf50;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">Session Feedback</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">"5-star rating: 'Very helpful session, thank you!'"</p>
-            <span style="font-size: 11px; color: #999;">Alex K. • 2 hours ago</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Appointment Confirmation -->
-      <div class="notification-item" style="padding: 15px 20px; cursor: pointer;" onclick="handleTherapistNotificationClick('appointment')">
-        <div style="display: flex; align-items: center;">
-          <div style="width: 40px; height: 40px; background: #fff3e0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-            <i class="fa-solid fa-calendar-check" style="color: #ff9800;"></i>
-          </div>
-          <div style="flex: 1;">
-            <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #333;">Appointment Confirmation</h4>
-            <p style="margin: 0; font-size: 12px; color: #666;">"Confirmed appointment for tomorrow at 2:00 PM"</p>
-            <span style="font-size: 11px; color: #999;">Emily R. • 3 hours ago</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div style="padding: 15px 20px; background: #f8f9fa; border-radius: 0 0 10px 10px;">
-      <button onclick="markAllTherapistMessagesAsRead()" style="width: 100%; padding: 8px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; margin-bottom: 8px;">
-        Mark All as Read
-      </button>
-      <button onclick="showSection('support')" style="width: 100%; padding: 8px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">
-        Go to Support Center
-      </button>
-    </div>
-  `;
-
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-
-  // Close on overlay click
-  overlay.addEventListener("click", function (e) {
-    if (e.target === overlay) {
-      closeTherapistNotifications();
-    }
-  });
-
-  // Add hover effects
-  const notificationItems = panel.querySelectorAll(".notification-item");
-  notificationItems.forEach((item) => {
-    item.addEventListener("mouseenter", function () {
-      this.style.background = "#f8f9fa";
-    });
-    item.addEventListener("mouseleave", function () {
-      this.style.background =
-        this.style.background === "rgb(255, 245, 245)"
-          ? "#fff5f5"
-          : this.style.background === "rgb(255, 249, 249)"
-          ? "#fff9f9"
-          : "white";
-    });
+  // Fetch latest therapist notifications first
+  fetchTherapistNotifications().then((notifications) => {
+    displayNotificationPanel(notifications, true);
   });
 }
 
@@ -511,61 +649,108 @@ function handleTherapistNotificationClick(type) {
     case "followup":
     case "feedback":
     case "appointment":
-      alert("Message details would open here in a full implementation.");
+      if (typeof showSection === "function") {
+        showSection("chat");
+      }
       break;
     default:
       console.log("Notification clicked:", type);
   }
 }
 
-function markAllTherapistMessagesAsRead() {
-  const badge = document.getElementById("therapist-notification-badge");
-  if (badge) {
-    badge.style.display = "none";
-    badge.textContent = "0";
+async function markAllTherapistMessagesAsRead() {
+  try {
+    // Clear all therapist notifications
+    notificationState.therapist.notifications = [];
+    notificationState.therapist.unread = 0;
+
+    // Update UI
+    updateTherapistNotificationBadge();
+
+    // Show feedback
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = "Marked as Read ✓";
+    button.style.background = "#28a745";
+
+    setTimeout(() => {
+      closeTherapistNotifications();
+    }, 1000);
+  } catch (error) {
+    console.error("Error marking therapist notifications as read:", error);
   }
-  closeTherapistNotifications();
-
-  // Show feedback
-  const button = event.target;
-  const originalText = button.textContent;
-  button.textContent = "Marked as Read ✓";
-  button.style.background = "#28a745";
-
-  setTimeout(() => {
-    closeTherapistNotifications();
-  }, 1000);
 }
 
-// Initialize therapist notification badge (simulate new messages)
-function initTherapistNotifications() {
-  const badge = document.getElementById("therapist-notification-badge");
-  if (badge && window.location.pathname.includes("therapistDashboard")) {
-    // Simulate having 3 new messages from users
-    badge.textContent = "3";
-    badge.style.display = "inline-block";
+// Listen for new messages via socket
+function initializeNotificationSocket() {
+  if (typeof io !== "undefined" && window.socket) {
+    // Listen for new messages
+    window.socket.on("newMessage", (data) => {
+      console.log("New message received, refreshing notifications");
+      const isTherapist =
+        window.location.pathname.includes("therapistDashboard");
 
-    // Simulate periodic new messages
-    setInterval(() => {
-      const currentCount = parseInt(badge.textContent) || 0;
-      if (currentCount < 5 && Math.random() > 0.7) {
-        badge.textContent = currentCount + 1;
-        badge.style.display = "inline-block";
+      if (isTherapist) {
+        updateTherapistNotificationBadge();
+      } else {
+        updateNotificationBadge();
       }
-    }, 45000); // Check every 45 seconds
+    });
+
+    // Listen for reminder alerts
+    window.socket.on("reminderAlert", (data) => {
+      console.log("Reminder alert received:", data);
+      updateNotificationBadge();
+
+      // Show browser notification if permission granted
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(data.title, {
+          body: data.message,
+          icon: "/assets/icon.png",
+          badge: "/assets/badge.png",
+        });
+      }
+    });
+  }
+}
+
+// Request browser notification permission
+async function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    try {
+      const permission = await Notification.requestPermission();
+      console.log("Notification permission:", permission);
+    } catch (error) {
+      console.error("Error requesting notification permission:", error);
+    }
   }
 }
 
 // Initialize notification badge on page load
 document.addEventListener("DOMContentLoaded", function () {
+  // Request notification permission
+  requestNotificationPermission();
+
+  // Initialize based on user type
+  const isTherapist = window.location.pathname.includes("therapistDashboard");
+
   setTimeout(() => {
-    updateNotificationBadge();
-    initializeSidebarProfile();
+    if (isTherapist) {
+      updateTherapistNotificationBadge();
+    } else {
+      updateNotificationBadge();
+    }
+
+    // Initialize socket listeners
+    initializeNotificationSocket();
+
+    // Start auto-refresh
+    startNotificationAutoRefresh();
   }, 1000);
 
-  // Initialize therapist notifications if on therapist dashboard
-  if (window.location.pathname.includes("therapistDashboard")) {
-    setTimeout(initTherapistNotifications, 1000);
+  // Initialize sidebar profile
+  if (typeof initializeSidebarProfile === "function") {
+    setTimeout(initializeSidebarProfile, 1000);
   }
 
   // Initialize chat functionality for user dashboard
@@ -580,10 +765,20 @@ document.addEventListener("DOMContentLoaded", function () {
     if (typeof initializeTherapistChat === "function") {
       initializeTherapistChat();
     }
-
-    // Update notification names with real data
-    setTimeout(() => {
-      updateNotificationNames();
-    }, 2000);
   }
 });
+
+// Export functions for use in other modules
+if (typeof window !== "undefined") {
+  window.fetchUserNotifications = fetchUserNotifications;
+  window.fetchTherapistNotifications = fetchTherapistNotifications;
+  window.updateNotificationBadge = updateNotificationBadge;
+  window.updateTherapistNotificationBadge = updateTherapistNotificationBadge;
+  window.showNotifications = showNotifications;
+  window.showTherapistNotifications = showTherapistNotifications;
+  window.closeNotifications = closeNotifications;
+  window.closeTherapistNotifications = closeTherapistNotifications;
+  window.handleNotificationClick = handleNotificationClick;
+  window.markAllAsRead = markAllAsRead;
+  window.markAllTherapistMessagesAsRead = markAllTherapistMessagesAsRead;
+}
