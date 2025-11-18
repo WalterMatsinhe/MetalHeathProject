@@ -1,5 +1,26 @@
 {
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
-  "editor.formatOnPaste": true
+  "editor.formatOnPaste": true,
+  "dbcode.connections": [
+    {
+      "connectionId": "SKeKbcgjENnRTeSLdRlhs",
+      "name": "MentalHealth",
+      "driver": "mongodb",
+      "connectionType": "host",
+      "driverOptions": {
+        "protocol": "mongodb+srv://"
+      },
+      "host": "cluster0.6hwizj1.mongodb.net",
+      "port": 27017,
+      "ssl": true,
+      "sslTrustCertificate": false,
+      "username": "walter2000matsinhe_db_user",
+      "password": "",
+      "savePassword": "secretStorage",
+      "database": "MentalHealthDb",
+      "readOnly": false,
+      "connectionTimeout": 30
+    }
+  ]
 }
