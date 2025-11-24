@@ -4,7 +4,7 @@ const User = require("./models/User");
 require("dotenv").config();
 
 const MONGO_URI =
-  process.env.MONGO_URI || "mongodb://localhost:27017/mern-auth";
+  process.env.MONGO_URI || "mongodb://localhost:27017/mentalhealth";
 
 async function createAdmin() {
   try {
@@ -57,7 +57,7 @@ async function createAdmin() {
     if (!error.message.includes("localhost")) {
       console.log("\n⚠️  Trying local MongoDB...");
       try {
-        await mongoose.connect("mongodb://localhost:27017/mern-auth");
+        await mongoose.connect("mongodb://localhost:27017/mentalhealth");
         console.log("✅ MongoDB connected (local)");
 
         const adminExists = await User.findOne({ email: "admin@gmail.com" });

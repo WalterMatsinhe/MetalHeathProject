@@ -9,6 +9,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const User = require("./models/User");
+const healthcheck = require("./healthcheck");
 
 const app = express();
 const server = http.createServer(app);
@@ -18,6 +19,22 @@ const io = new Server(server, {
     credentials: true,
     methods: ["GET", "POST"],
   },
+  // ===== OPTIMIZATION: Socket.IO Performance Settings =====
+  transports: ["websocket", "polling"], // WebSocket first for better performance
+  compression: true, // Enable compression for payloads
+  perMessageDeflate: {
+    threshold: 1024, // Only compress messages over 1KB
+  },
+  // Reconnection settings for resilience
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  reconnectionAttempts: 5,
+  // Performance optimizations
+  maxHttpBufferSize: 1e6, // 1MB max buffer
+  allowEIO3: false, // Use EIO4 for better performance
+  pingInterval: 25000,
+  pingTimeout: 60000,
 });
 
 // Middleware
@@ -135,6 +152,34 @@ app.get("/api/test", (req, res) => {
     hasJwtSecret: !!process.env.JWT_SECRET,
     timestamp: new Date().toISOString(),
   });
+});
+
+// ===== HEALTH CHECK ENDPOINTS FOR ZERO-DOWNTIME DEPLOYMENT =====
+/**
+ * Liveness probe - indicates if server is alive
+ * Load balancers use this to detect dead instances
+ */
+app.get("/health/live", (req, res) => {
+  const probe = healthcheck.livenessProbe();
+  const statusCode = probe.status === "alive" ? 200 : 503;
+  res.status(statusCode).json(probe);
+});
+
+/**
+ * Readiness probe - indicates if server is ready for traffic
+ * Load balancers use this to route traffic only to ready instances
+ */
+app.get("/health/ready", (req, res) => {
+  const probe = healthcheck.readinessProbe();
+  const statusCode = probe.status === "ready" ? 200 : 503;
+  res.status(statusCode).json(probe);
+});
+
+/**
+ * Detailed metrics for monitoring systems
+ */
+app.get("/health/metrics", (req, res) => {
+  res.json(healthcheck.getDetailedMetrics());
 });
 
 // Test endpoint to check authentication
@@ -661,32 +706,175 @@ function generateRoomId() {
 // Connect to MongoDB and start server
 const PORT = process.env.PORT || 5000;
 const MONGO_URI =
-  process.env.MONGO_URI || "mongodb://localhost:27017/mern-auth";
+  process.env.MONGO_URI || "mongodb://localhost:27017/mentalhealth";
 
-mongoose
-  .connect(MONGO_URI)
-  .then(() => {
-    server.listen(PORT, () => {
-      console.log(`MongoDB connected`);
-      console.log(`Server running on port http://localhost:${PORT}`);
-      console.log(`Socket.IO server ready for WebRTC signaling`);
-    });
-  })
-  .catch((error) => {
-    console.log("MongoDB Atlas connection failed, trying local MongoDB...");
-    // Try local MongoDB as fallback
-    mongoose
-      .connect("mongodb://localhost:27017/mern-auth")
-      .then(() => {
-        server.listen(PORT, () => {
-          console.log(`MongoDB connected (local)`);
-          console.log(`Server running on port http://localhost:${PORT}`);
-          console.log(`Socket.IO server ready for WebRTC signaling`);
+/**
+ * ===== OPTIMIZED MONGODB CONNECTION WITH RETRY LOGIC =====
+ * Features:
+ * - Connection pooling for efficient resource usage
+ * - Exponential backoff retry mechanism
+ * - Graceful error handling
+ * - Health check integration
+ */
+
+const mongooseOptions = {
+  // Connection pooling settings
+  maxPoolSize: 10, // Maximum number of connections in pool
+  minPoolSize: 2, // Minimum number of connections in pool
+  maxIdleTimeMS: 45000, // Close idle connections after 45s
+  
+  // Retry settings
+  retryWrites: true,
+  retryReads: true,
+  
+  // Connection timeout
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 10000,
+  
+  // Application name for monitoring
+  appName: "MentalHealthApp",
+};
+
+let connectionAttempts = 0;
+const MAX_RETRY_ATTEMPTS = 5;
+const BASE_RETRY_DELAY = 1000; // 1 second
+
+/**
+ * Exponential backoff retry mechanism
+ */
+function getRetryDelay(attempt) {
+  // Formula: baseDelay * 2^attempt with max 60 seconds
+  const delay = Math.min(BASE_RETRY_DELAY * Math.pow(2, attempt), 60000);
+  // Add jitter (random variation) to prevent thundering herd
+  const jitter = Math.random() * 1000;
+  return delay + jitter;
+}
+
+/**
+ * Connect to MongoDB with retry logic
+ */
+async function connectToDatabase() {
+  return new Promise((resolve, reject) => {
+    async function attemptConnection(attempt = 0) {
+      try {
+        console.log(`\n📡 Connection attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}...`);
+        
+        await mongoose.connect(MONGO_URI, mongooseOptions);
+        
+        healthcheck.updateMongoStatus(true);
+        console.log("✅ MongoDB connected successfully");
+        
+        // Setup connection event handlers
+        mongoose.connection.on("disconnected", () => {
+          console.warn("⚠️  MongoDB connection lost. Attempting to reconnect...");
+          healthcheck.updateMongoStatus(false);
         });
-      })
-      .catch((localError) => {
-        console.log("Both Atlas and local MongoDB connections failed:");
-        console.log("Atlas error:", error);
-        console.log("Local error:", localError);
-      });
+
+        mongoose.connection.on("reconnected", () => {
+          console.log("✅ MongoDB reconnected");
+          healthcheck.updateMongoStatus(true);
+        });
+
+        mongoose.connection.on("error", (err) => {
+          console.error("❌ MongoDB error:", err.message);
+          healthcheck.updateMongoStatus(false);
+        });
+
+        resolve();
+      } catch (error) {
+        connectionAttempts++;
+        console.error(`❌ Connection attempt ${attempt + 1} failed:`, error.message);
+
+        if (attempt < MAX_RETRY_ATTEMPTS - 1) {
+          const delay = getRetryDelay(attempt);
+          console.log(
+            `⏳ Retrying in ${Math.round(delay / 1000)} seconds...`
+          );
+          setTimeout(() => attemptConnection(attempt + 1), delay);
+        } else {
+          console.error(
+            "❌ Max connection attempts reached. Unable to connect to MongoDB."
+          );
+          reject(error);
+        }
+      }
+    }
+
+    attemptConnection();
   });
+}
+
+/**
+ * Graceful shutdown handler
+ */
+function setupGracefulShutdown() {
+  const gracefulShutdown = async () => {
+    console.log(
+      "\n⚠️  SIGTERM signal received: closing HTTP server gracefully..."
+    );
+
+    // Mark system as not ready to stop new requests
+    healthcheck.markNotReady();
+
+    // Stop accepting new connections
+    server.close(async () => {
+      console.log("HTTP server closed");
+
+      // Disconnect Socket.IO
+      io.close();
+      console.log("Socket.IO server closed");
+
+      // Close database connection
+      try {
+        await mongoose.connection.close();
+        console.log("MongoDB connection closed");
+      } catch (err) {
+        console.error("Error closing MongoDB:", err);
+      }
+
+      console.log("✅ Graceful shutdown complete");
+      process.exit(0);
+    });
+
+    // Force shutdown after 30 seconds
+    setTimeout(() => {
+      console.error("❌ Forced shutdown - graceful shutdown timeout exceeded");
+      process.exit(1);
+    }, 30000);
+  };
+
+  // Handle graceful shutdown signals
+  process.on("SIGTERM", gracefulShutdown);
+  process.on("SIGINT", gracefulShutdown);
+}
+
+// Start server
+async function startServer() {
+  try {
+    // Connect to database first
+    await connectToDatabase();
+
+    // Mark system as ready
+    healthcheck.markReady();
+
+    // Setup graceful shutdown
+    setupGracefulShutdown();
+
+    // Start listening
+    server.listen(PORT, () => {
+      console.log(`\n🚀 Server running on http://localhost:${PORT}`);
+      console.log(`📡 Socket.IO server ready for WebRTC signaling`);
+      console.log(`\n📊 Health check endpoints available:`);
+      console.log(`   - Liveness:  http://localhost:${PORT}/health/live`);
+      console.log(`   - Readiness: http://localhost:${PORT}/health/ready`);
+      console.log(`   - Metrics:   http://localhost:${PORT}/health/metrics`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();

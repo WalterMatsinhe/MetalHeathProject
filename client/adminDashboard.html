@@ -85,6 +85,11 @@
               ><i class="fa-solid fa-users"></i>&nbsp; All Users</a
             >
           </li>
+          <li>
+            <a href="#profile" onclick="showSection('profile')"
+              ><i class="fa-solid fa-user-cog"></i>&nbsp; My Profile</a
+            >
+          </li>
         </ul>
       </aside>
 
@@ -245,6 +250,33 @@
               <i class="fa-solid fa-info-circle"></i> User management features
               coming soon.
             </p>
+          </div>
+        </section>
+
+        <!-- Profile Section -->
+        <section id="profile" class="content-section content-section-hidden">
+          <header class="section-header">
+            <h2 class="title accent">My Profile</h2>
+            <p class="section-desc">
+              View and manage your admin profile information.
+            </p>
+          </header>
+          <hr class="dashboard-hr" />
+
+          <input
+            type="file"
+            id="adminProfilePictureInput"
+            accept="image/*"
+            style="display: none"
+          />
+
+          <div class="profile-container">
+            <div class="profile-content" id="profileContent">
+              <div class="loading-message">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <p>Loading profile...</p>
+              </div>
+            </div>
           </div>
         </section>
       </main>

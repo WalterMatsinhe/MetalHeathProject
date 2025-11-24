@@ -10,6 +10,7 @@ router.get("/therapists", auth, async (req, res) => {
   try {
     const therapists = await User.find({
       role: "therapist",
+      registrationStatus: { $ne: "rejected" }, // Exclude rejected therapists
     }).select(
       "name firstName lastName specialization yearsExperience bio areasOfExpertise languagesSpoken stats profilePicture"
     );
@@ -81,10 +82,11 @@ router.get("/history/:therapistId", auth, async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
 
-    // Verify therapist exists
+    // Verify therapist exists and is not rejected
     const therapist = await User.findOne({
       _id: therapistId,
       role: "therapist",
+      registrationStatus: { $ne: "rejected" }, // Exclude rejected therapists
     });
     if (!therapist) {
       return res.status(404).json({ message: "Therapist not found" });
@@ -149,10 +151,11 @@ router.get("/history/user/:userId", auth, async (req, res) => {
         .json({ message: "Access denied: Therapists only" });
     }
 
-    // Verify the user exists
+    // Verify the user exists and is not rejected
     const user = await User.findOne({
       _id: userId,
       role: { $ne: "therapist" },
+      registrationStatus: { $ne: "rejected" }, // Exclude rejected users
     });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -227,6 +230,7 @@ router.post("/send", auth, async (req, res) => {
       recipient = await User.findOne({
         _id: userId,
         role: { $ne: "therapist" },
+        registrationStatus: { $ne: "rejected" }, // Exclude rejected users
       });
       if (!recipient) {
         return res.status(404).json({ message: "User not found" });
@@ -239,7 +243,11 @@ router.post("/send", auth, async (req, res) => {
         });
       }
       recipientId = therapistId;
-      recipient = await User.findOne({ _id: therapistId, role: "therapist" });
+      recipient = await User.findOne({
+        _id: therapistId,
+        role: "therapist",
+        registrationStatus: { $ne: "rejected" }, // Exclude rejected therapists
+      });
       if (!recipient) {
         return res.status(404).json({ message: "Therapist not found" });
       }
@@ -302,10 +310,12 @@ router.get("/conversations", auth, async (req, res) => {
       participants: therapistId,
       isActive: true,
     })
-      .populate(
-        "participants",
-        "name firstName lastName email role profilePicture"
-      )
+      .populate({
+        path: "participants",
+        select:
+          "name firstName lastName email role profilePicture registrationStatus",
+        match: { registrationStatus: { $ne: "rejected" } }, // Exclude rejected participants
+      })
       .populate("lastMessage.sender", "name firstName lastName")
       .sort({ "lastMessage.timestamp": -1 });
 
@@ -413,10 +423,12 @@ router.get("/my-conversations", auth, async (req, res) => {
       participants: userId,
       isActive: true,
     })
-      .populate(
-        "participants",
-        "name firstName lastName email role profilePicture specialization"
-      )
+      .populate({
+        path: "participants",
+        select:
+          "name firstName lastName email role profilePicture specialization registrationStatus",
+        match: { registrationStatus: { $ne: "rejected" } }, // Exclude rejected participants
+      })
       .populate("lastMessage.sender", "name firstName lastName")
       .sort({ "lastMessage.timestamp": -1 });
 

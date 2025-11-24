@@ -11,6 +11,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // Load initial data
   loadStatistics();
   loadPendingApplications();
+
+  // Initialize admin profile picture upload
+  initializeAdminProfilePictureUpload();
 });
 
 // Check if user has admin access
@@ -29,6 +32,12 @@ function checkAdminAccess() {
   const sidebarUserName = document.getElementById("sidebarUserName");
   if (sidebarUserName && userData.firstName) {
     sidebarUserName.textContent = `${userData.firstName} ${userData.lastName}`;
+  }
+
+  // Update sidebar profile picture
+  const sidebarProfileImage = document.getElementById("sidebarProfileImage");
+  if (sidebarProfileImage && userData.profilePicture) {
+    sidebarProfileImage.src = userData.profilePicture;
   }
 
   return true;
@@ -1045,6 +1054,8 @@ window.showSection = function (sectionId) {
     loadRejectedApplications();
   } else if (sectionId === "users") {
     loadAllUsers();
+  } else if (sectionId === "profile") {
+    loadAdminProfile();
   }
 };
 
@@ -1107,5 +1118,415 @@ async function deleteUser(userId, userName) {
   } catch (error) {
     console.error("Error deleting user:", error);
     showToast(error.message || "Failed to delete user", "error");
+  }
+}
+
+// Load admin profile
+async function loadAdminProfile() {
+  const container = document.getElementById("profileContent");
+
+  if (!container) {
+    console.error("Profile container not found");
+    return;
+  }
+
+  try {
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+
+    container.innerHTML = `
+      <div class="profile-card-admin">
+        <div class="profile-header-section">
+          <div class="profile-picture-wrapper" style="position: relative; display: inline-block;">
+            <img 
+              id="adminProfileImage"
+              src="${
+                userData.profilePicture ||
+                "../assets/profile-pictures/default-admin-avatar.svg"
+              }" 
+              alt="Admin Profile" 
+              class="profile-picture-large"
+              onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjYwIiBjeT0iNjAiIHI9IjYwIiBmaWxsPSIjRkY2NzAwIi8+CjxjaXJjbGUgY3g9IjYwIiBjeT0iNDYiIHI9IjIwIiBmaWxsPSIjRkZGIi8+CjxwYXRoIGQ9Ik0zMCAxMDBDMzAgODAgNDAgNjYgNjAgNjZTOTAgODAgOTAgMTAwIiBmaWxsPSIjRkZGIi8+Cjwvc3ZnPgo='"
+            />
+            <button 
+              type="button" 
+              class="profile-picture-edit-btn"
+              onclick="document.getElementById('adminProfilePictureInput').click()"
+              title="Change Profile Picture"
+            >
+              <i class="fa-solid fa-camera"></i>
+            </button>
+          </div>
+          <div class="profile-info-section">
+            <h3 class="profile-name-admin">${userData.firstName || "Admin"} ${
+      userData.lastName || "User"
+    }</h3>
+            <p class="profile-email-admin">${
+              userData.email || "Not available"
+            }</p>
+            <p class="profile-role-admin">
+              <span class="role-badge role-admin">
+                <i class="fa-solid fa-shield"></i> Administrator
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div class="profile-details-section">
+          <div class="detail-group">
+            <h4 class="detail-group-title">Account Information</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <strong>User ID:</strong>
+                <span>${userData.id || userData._id || "N/A"}</span>
+              </div>
+              <div class="detail-item">
+                <strong>Email:</strong>
+                <span>${userData.email || "Not available"}</span>
+              </div>
+              <div class="detail-item">
+                <strong>Role:</strong>
+                <span class="role-badge role-admin">Admin</span>
+              </div>
+              <div class="detail-item">
+                <strong>Account Status:</strong>
+                <span class="status-badge status-approved">
+                  <i class="fa-solid fa-check-circle"></i> Active
+                </span>
+              </div>
+              <div class="detail-item">
+                <strong>Access Level:</strong>
+                <span>Full Administrator</span>
+              </div>
+              <div class="detail-item">
+                <strong>Account Type:</strong>
+                <span>System Admin</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-group">
+            <div class="detail-group-header">
+              <h4 class="detail-group-title">Personal Information</h4>
+              <button 
+                type="button" 
+                class="btn-icon btn-edit-profile"
+                onclick="toggleAdminProfileEdit()"
+                title="Edit Profile"
+              >
+                <i class="fa-solid fa-edit"></i> Edit
+              </button>
+            </div>
+            <div id="personalInfoDisplay" class="detail-grid">
+              <div class="detail-item">
+                <strong>Full Name:</strong>
+                <span>${userData.firstName || ""} ${
+      userData.lastName || ""
+    }</span>
+              </div>
+              <div class="detail-item">
+                <strong>Phone:</strong>
+                <span>${userData.phone || "Not provided"}</span>
+              </div>
+              <div class="detail-item">
+                <strong>Address:</strong>
+                <span>${userData.address || "Not provided"}</span>
+              </div>
+            </div>
+            <form id="personalInfoForm" class="personal-info-form" style="display: none;">
+              <div class="edit-form-container">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>First Name:</label>
+                    <input 
+                      type="text" 
+                      id="adminFirstName" 
+                      placeholder="First Name"
+                      value="${userData.firstName || ""}"
+                      class="form-input"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label>Last Name:</label>
+                    <input 
+                      type="text" 
+                      id="adminLastName" 
+                      placeholder="Last Name"
+                      value="${userData.lastName || ""}"
+                      class="form-input"
+                    />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Phone:</label>
+                    <input 
+                      type="tel" 
+                      id="adminPhone" 
+                      placeholder="Phone Number"
+                      value="${userData.phone || ""}"
+                      class="form-input"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label>Address:</label>
+                    <input 
+                      type="text" 
+                      id="adminAddress" 
+                      placeholder="Address"
+                      value="${userData.address || ""}"
+                      class="form-input"
+                    />
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button 
+                    type="button" 
+                    class="btn btn-success"
+                    onclick="saveAdminPersonalInfo()"
+                  >
+                    <i class="fa-solid fa-save"></i> Save Changes
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn btn-secondary"
+                    onclick="toggleAdminProfileEdit()"
+                  >
+                    <i class="fa-solid fa-times"></i> Cancel
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="detail-group">
+            <h4 class="detail-group-title">Permissions</h4>
+            <div class="permissions-list">
+              <div class="permission-item">
+                <i class="fa-solid fa-check-circle permission-granted"></i>
+                <span>Manage therapist applications</span>
+              </div>
+              <div class="permission-item">
+                <i class="fa-solid fa-check-circle permission-granted"></i>
+                <span>View all users and therapists</span>
+              </div>
+              <div class="permission-item">
+                <i class="fa-solid fa-check-circle permission-granted"></i>
+                <span>Delete user accounts</span>
+              </div>
+              <div class="permission-item">
+                <i class="fa-solid fa-check-circle permission-granted"></i>
+                <span>View platform statistics</span>
+              </div>
+              <div class="permission-item">
+                <i class="fa-solid fa-check-circle permission-granted"></i>
+                <span>Approve/Reject therapist applications</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    console.error("Error loading admin profile:", error);
+    container.innerHTML = `
+      <div class="error-message">
+        <i class="fa-solid fa-exclamation-triangle"></i>
+        <p>Failed to load profile. Please try again.</p>
+        <button class="btn btn-primary" onclick="loadAdminProfile()">
+          Retry
+        </button>
+      </div>
+    `;
+  }
+}
+
+// ============================================
+// ADMIN PROFILE PICTURE UPLOAD FUNCTIONALITY
+// ============================================
+
+// Initialize admin profile picture upload
+function initializeAdminProfilePictureUpload() {
+  const fileInput = document.getElementById("adminProfilePictureInput");
+
+  if (!fileInput) return;
+
+  // Handle file selection
+  fileInput.addEventListener("change", async function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      showToast("Please select a valid image file", "error");
+      fileInput.value = "";
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Please select an image smaller than 5MB", "error");
+      fileInput.value = "";
+      return;
+    }
+
+    // Upload immediately
+    await uploadAdminProfilePicture(file);
+    fileInput.value = "";
+  });
+}
+
+// Upload admin profile picture
+async function uploadAdminProfilePicture(file) {
+  if (!file) {
+    showToast("Please select a file first", "error");
+    return;
+  }
+
+  try {
+    // Show loading state on the image
+    const profileImg = document.getElementById("adminProfileImage");
+    if (profileImg) {
+      profileImg.style.opacity = "0.5";
+    }
+
+    showToast("Uploading profile picture...", "info");
+
+    // Upload file
+    const token = localStorage.getItem("authToken");
+    const formData = new FormData();
+    formData.append("profilePicture", file);
+
+    const response = await fetch("http://localhost:5000/api/profile/picture", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to upload image");
+    }
+
+    const result = await response.json();
+
+    // Update profile image
+    if (profileImg) {
+      profileImg.src = result.profilePictureUrl;
+      profileImg.style.opacity = "1";
+    }
+
+    // Update sidebar profile image
+    const sidebarImg = document.getElementById("sidebarProfileImage");
+    if (sidebarImg) {
+      sidebarImg.src = result.profilePictureUrl;
+    }
+
+    // Update localStorage
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    userData.profilePicture = result.profilePictureUrl;
+    localStorage.setItem("userData", JSON.stringify(userData));
+
+    showToast("Profile picture updated successfully!", "success");
+  } catch (error) {
+    console.error("Upload error:", error);
+    showToast(error.message || "Failed to upload profile picture", "error");
+
+    // Restore opacity on error
+    const profileImg = document.getElementById("adminProfileImage");
+    if (profileImg) {
+      profileImg.style.opacity = "1";
+    }
+  }
+}
+
+// Cancel admin profile picture upload (kept for compatibility)
+function cancelAdminProfilePictureUpload() {
+  const fileInput = document.getElementById("adminProfilePictureInput");
+  fileInput.value = "";
+}
+
+// ============================================
+// ADMIN PERSONAL INFORMATION EDIT FUNCTIONALITY
+// ============================================
+
+// Toggle between view and edit mode
+function toggleAdminProfileEdit() {
+  const displayDiv = document.getElementById("personalInfoDisplay");
+  const formDiv = document.getElementById("personalInfoForm");
+
+  if (displayDiv && formDiv) {
+    if (displayDiv.style.display === "none") {
+      // Switch to display mode
+      displayDiv.style.display = "grid";
+      formDiv.style.display = "none";
+    } else {
+      // Switch to edit mode
+      displayDiv.style.display = "none";
+      formDiv.style.display = "grid";
+    }
+  }
+}
+
+// Save admin personal information
+async function saveAdminPersonalInfo() {
+  try {
+    const firstName = document.getElementById("adminFirstName").value.trim();
+    const lastName = document.getElementById("adminLastName").value.trim();
+    const phone = document.getElementById("adminPhone").value.trim();
+    const address = document.getElementById("adminAddress").value.trim();
+
+    // Validate required fields
+    if (!firstName || !lastName) {
+      showToast("First name and last name are required", "error");
+      return;
+    }
+
+    showToast("Saving personal information...", "info");
+
+    const token = localStorage.getItem("authToken");
+    const response = await fetch("http://localhost:5000/api/profile/", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        phone,
+        address,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to update profile");
+    }
+
+    const result = await response.json();
+
+    // Update localStorage
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    userData.firstName = firstName;
+    userData.lastName = lastName;
+    userData.phone = phone;
+    userData.address = address;
+    localStorage.setItem("userData", JSON.stringify(userData));
+
+    // Update sidebar with new name
+    const sidebarName = document.getElementById("sidebarUserName");
+    if (sidebarName) {
+      sidebarName.textContent = `${firstName} ${lastName}`;
+    }
+
+    showToast("Personal information updated successfully!", "success");
+
+    // Reload profile to reflect changes
+    loadAdminProfile();
+  } catch (error) {
+    console.error("Save error:", error);
+    showToast(error.message || "Failed to save personal information", "error");
   }
 }
