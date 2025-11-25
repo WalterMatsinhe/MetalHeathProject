@@ -158,7 +158,7 @@ function displayUpcomingReminders(reminders) {
   `;
 }
 
-// Toggle goal completion
+// Toggle goal completion with automatic progress tracking
 async function toggleGoalComplete(goalId, isCompleted) {
   try {
     const token = localStorage.getItem("authToken");
@@ -180,6 +180,14 @@ async function toggleGoalComplete(goalId, isCompleted) {
 
       if (response.ok) {
         showNotification(data.message || "Goal completed! 🎉", "success");
+        
+        // Auto-track progress
+        trackProgressAutomatically({
+          type: "goal_completed",
+          goalId: goalId,
+          completedAt: new Date().toISOString(),
+        });
+        
         loadDailyGoals(); // Reload to show updated streak
         loadDashboardStats(); // Update stats
       }
@@ -208,7 +216,7 @@ async function toggleGoalComplete(goalId, isCompleted) {
   }
 }
 
-// Complete a reminder
+// Complete a reminder with automatic progress tracking
 async function completeReminder(reminderId) {
   try {
     const token = localStorage.getItem("authToken");
@@ -228,6 +236,14 @@ async function completeReminder(reminderId) {
 
     if (response.ok) {
       showNotification(data.message || "Reminder completed! ✓", "success");
+      
+      // Auto-track progress
+      trackProgressAutomatically({
+        type: "reminder_completed",
+        reminderId: reminderId,
+        completedAt: new Date().toISOString(),
+      });
+      
       loadUpcomingReminders();
     }
   } catch (error) {
@@ -543,6 +559,116 @@ function getReminderIcon(type) {
     custom: "⏰",
   };
   return icons[type] || "⏰";
+}
+
+// Automatic progress tracking
+async function trackProgressAutomatically(progressData) {
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+
+    // Save progress entry to localStorage for stats
+    const progressLog = JSON.parse(
+      localStorage.getItem("progressLog") || "[]"
+    );
+    progressLog.push(progressData);
+    localStorage.setItem("progressLog", JSON.stringify(progressLog));
+
+    // Update user stats based on progress type
+    if (progressData.type === "goal_completed") {
+      // Increment goalsAchieved in the database
+      try {
+        const response = await fetch("http://localhost:5000/api/profile/stats", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            goalsAchieved: await getUpdatedGoalCount(),
+          }),
+        });
+
+        if (response.ok) {
+          console.log("Stats updated in database");
+          // Reload profile to reflect changes
+          if (typeof loadUserProfileData === "function") {
+            await loadUserProfileData();
+          }
+        }
+      } catch (err) {
+        console.error("Error updating stats:", err);
+      }
+    } else if (progressData.type === "reminder_completed") {
+      // Track reminder completion if needed
+      console.log("Reminder completed tracked");
+    }
+
+    // Calculate and display progress stats
+    updateProgressStats(progressLog);
+  } catch (error) {
+    console.error("Error tracking progress:", error);
+  }
+}
+
+// Get updated goal count
+async function getUpdatedGoalCount() {
+  try {
+    const token = localStorage.getItem("authToken");
+    const response = await fetch("http://localhost:5000/api/goals?status=completed", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    return data.goals ? data.goals.length : 0;
+  } catch (err) {
+    console.error("Error getting goal count:", err);
+    return 0;
+  }
+}
+
+// Update and display progress statistics
+function updateProgressStats(progressLog) {
+  if (!progressLog || progressLog.length === 0) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Today's completions
+  const todayCompletions = progressLog.filter((item) => {
+    const itemDate = new Date(item.completedAt);
+    itemDate.setHours(0, 0, 0, 0);
+    return itemDate.getTime() === today.getTime();
+  }).length;
+
+  // This week's completions
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const weekCompletions = progressLog.filter((item) => {
+    const itemDate = new Date(item.completedAt);
+    itemDate.setHours(0, 0, 0, 0);
+    return itemDate >= weekAgo;
+  }).length;
+
+  // Update stats display if exists
+  const statsDisplay = document.querySelector(".progress-stats");
+  if (statsDisplay) {
+    statsDisplay.innerHTML = `
+      <div class="stat-item">
+        <span class="stat-label">Today</span>
+        <span class="stat-value">${todayCompletions}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">This Week</span>
+        <span class="stat-value">${weekCompletions}</span>
+      </div>
+    `;
+  }
+
+  // Update dashboard stats if function exists
+  if (typeof loadDashboardStats === "function") {
+    loadDashboardStats();
+  }
 }
 
 // Initialize event listeners

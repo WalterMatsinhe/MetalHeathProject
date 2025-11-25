@@ -12,15 +12,10 @@ router.get("/therapists", auth, async (req, res) => {
       role: "therapist",
       registrationStatus: { $ne: "rejected" }, // Exclude rejected therapists
     }).select(
-      "name firstName lastName specialization yearsExperience bio areasOfExpertise languagesSpoken stats profilePicture"
+      "firstName lastName specialization yearsExperience bio areasOfExpertise languagesSpoken stats profilePicture"
     );
 
     console.log("Found therapists:", therapists.length);
-    therapists.forEach((t) => {
-      console.log(
-        `Therapist: ${t.name}, firstName: ${t.firstName}, lastName: ${t.lastName}`
-      );
-    });
 
     // Get online users from Socket.IO (passed via req.app.locals if needed)
     // For now, we'll use a simple check - in production, this would query Redis or similar
@@ -41,16 +36,6 @@ router.get("/therapists", auth, async (req, res) => {
     const therapistsWithStatus = therapists.map((therapist) => {
       const therapistObj = therapist.toObject();
 
-      // ALWAYS use firstName/lastName if available, ignore the old name field
-      if (therapistObj.firstName || therapistObj.lastName) {
-        therapistObj.name = `${therapistObj.firstName || ""} ${
-          therapistObj.lastName || ""
-        }`.trim();
-        console.log(
-          `Updated name from "${therapist.name}" to "${therapistObj.name}"`
-        );
-      }
-
       return {
         ...therapistObj,
         status: isOnline(therapist._id) ? "online" : "offline",
@@ -62,7 +47,7 @@ router.get("/therapists", auth, async (req, res) => {
       "Returning therapists with status:",
       therapistsWithStatus.map((t) => ({
         id: t._id,
-        name: t.name,
+        fullName: t.fullName,
         status: t.status,
       }))
     );
@@ -350,14 +335,12 @@ router.get("/conversations", auth, async (req, res) => {
 
           const unreadCount = conv.unreadCount.get(therapistId.toString()) || 0;
 
-          // ALWAYS prioritize firstName/lastName over old name field
+          // Compute display name from firstName and lastName
           let displayName = "";
           if (otherParticipant.firstName || otherParticipant.lastName) {
             displayName = `${otherParticipant.firstName || ""} ${
               otherParticipant.lastName || ""
             }`.trim();
-          } else if (otherParticipant.name) {
-            displayName = otherParticipant.name;
           } else {
             displayName = otherParticipant.email || "Unknown User";
           }
@@ -463,14 +446,12 @@ router.get("/my-conversations", auth, async (req, res) => {
 
           const unreadCount = conv.unreadCount.get(userId.toString()) || 0;
 
-          // ALWAYS prioritize firstName/lastName over old name field
+          // Compute display name from firstName and lastName
           let displayName = "";
           if (therapist.firstName || therapist.lastName) {
             displayName = `${therapist.firstName || ""} ${
               therapist.lastName || ""
             }`.trim();
-          } else if (therapist.name) {
-            displayName = therapist.name;
           } else {
             displayName = therapist.email || "Unknown User";
           }

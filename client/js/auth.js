@@ -44,105 +44,17 @@ document.addEventListener("DOMContentLoaded", function () {
       e.preventDefault();
 
       const formData = new FormData(registerForm);
-      const data = Object.fromEntries(formData.entries());
+      let data = Object.fromEntries(formData.entries());
 
-      // Validate required fields
-      if (!data.firstName || !data.firstName.trim()) {
-        showToast("First name is required", "error");
+      // Validate using consolidated validator
+      const validation = Validators.validateRegistrationForm(data);
+      if (!validation.valid) {
+        validation.errors.forEach((error) => showToast(error, "error"));
         return;
       }
 
-      if (!data.lastName || !data.lastName.trim()) {
-        showToast("Last name is required", "error");
-        return;
-      }
-
-      // Validate name format
-      const namePattern = /^[a-zA-Z\s\-'\.]+$/;
-      if (!namePattern.test(data.firstName.trim())) {
-        showToast(
-          "First name can only contain letters, spaces, hyphens, apostrophes, and periods",
-          "error"
-        );
-        return;
-      }
-
-      if (!namePattern.test(data.lastName.trim())) {
-        showToast(
-          "Last name can only contain letters, spaces, hyphens, apostrophes, and periods",
-          "error"
-        );
-        return;
-      }
-
-      // Validate name length
-      if (data.firstName.trim().length > 50) {
-        showToast("First name cannot be longer than 50 characters", "error");
-        return;
-      }
-
-      if (data.lastName.trim().length > 50) {
-        showToast("Last name cannot be longer than 50 characters", "error");
-        return;
-      }
-
-      if (!data.email || !data.email.trim()) {
-        showToast("Email is required", "error");
-        return;
-      }
-
-      // Validate email format
-      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailPattern.test(data.email.trim())) {
-        showToast("Please enter a valid email address", "error");
-        return;
-      }
-
-      if (!data.password || data.password.length < 6) {
-        showToast("Password must be at least 6 characters long", "error");
-        return;
-      }
-
-      // Validate therapist-specific fields
-      if (data.role === "therapist") {
-        if (!data.licenseNumber || !data.licenseNumber.trim()) {
-          showToast(
-            "License number is required for therapist registration",
-            "error"
-          );
-          return;
-        }
-
-        if (!data.specialization || data.specialization === "") {
-          showToast("Please select a specialization", "error");
-          return;
-        }
-
-        if (!data.yearsExperience || data.yearsExperience < 0) {
-          showToast("Years of experience is required", "error");
-          return;
-        }
-
-        if (!data.education || !data.education.trim()) {
-          showToast(
-            "Education and qualifications are required for therapist registration",
-            "error"
-          );
-          return;
-        }
-
-        // Trim therapist fields
-        data.licenseNumber = data.licenseNumber.trim();
-        data.education = data.education.trim();
-        if (data.institution) data.institution = data.institution.trim();
-        if (data.certifications)
-          data.certifications = data.certifications.trim();
-      }
-
-      // Trim whitespace from names and email
-      data.firstName = data.firstName.trim();
-      data.lastName = data.lastName.trim();
-      data.email = data.email.trim().toLowerCase();
+      // Sanitize data
+      data = Validators.sanitizeRegistrationData(data);
 
       try {
         const res = await fetch(registerForm.action, {
@@ -154,20 +66,13 @@ document.addEventListener("DOMContentLoaded", function () {
         const result = await res.json();
 
         if (res.ok) {
-          if (data.role === "therapist") {
-            showToast(
-              "Application submitted! Please wait for admin approval.",
-              "success"
-            );
-            setTimeout(() => {
-              window.location.href = "login.html";
-            }, 2500);
-          } else {
-            showToast("Registration successful! Please login.", "success");
-            setTimeout(() => {
-              window.location.href = "login.html";
-            }, 1200);
-          }
+          showToast(
+            data.role === "therapist"
+              ? "Application submitted! Please wait for admin approval."
+              : "Registration successful! Please login.",
+            "success"
+          );
+          setTimeout(() => (window.location.href = "login.html"), 1500);
         } else {
           showToast(result.message || "Registration failed", "error");
         }

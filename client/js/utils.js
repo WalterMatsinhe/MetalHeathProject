@@ -1,116 +1,203 @@
 // ============================================
-// UTILITY FUNCTIONS
+// CONSOLIDATED UTILITY FUNCTIONS
 // ============================================
 
-// Shows a toast notification at the bottom of the page
+// ===== NOTIFICATION SYSTEM =====
+const NotificationManager = {
+  show(message, type = "success", duration = 2500) {
+    const container = document.createElement("div");
+    container.className = `notification notification-${type}`;
+    container.textContent = message;
+
+    // Determine color based on type
+    const colors = {
+      success: "#05c19b",
+      error: "#e74c3c",
+      warning: "#f39c12",
+      info: "#3498db",
+    };
+
+    Object.assign(container.style, {
+      position: "fixed",
+      top: "20px",
+      right: "20px",
+      padding: "0.75rem 1.25rem",
+      borderRadius: "6px",
+      fontSize: "14px",
+      fontWeight: "500",
+      color: "#fff",
+      backgroundColor: colors[type] || colors.info,
+      zIndex: "99999",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+      maxWidth: "300px",
+      wordWrap: "break-word",
+      animation: "slideIn 0.3s ease-out",
+    });
+
+    // Add slide-in animation
+    if (!document.getElementById("notification-styles")) {
+      const style = document.createElement("style");
+      style.id = "notification-styles";
+      style.textContent = `
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideOut {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(container);
+
+    setTimeout(() => {
+      container.style.animation = "slideOut 0.3s ease-out";
+      setTimeout(() => container.remove(), 300);
+    }, duration);
+  },
+};
+
+// Backward compatibility - expose functions globally
 function showToast(message, type = "success") {
-  let toast = document.createElement("div");
-  toast.textContent = message;
-  toast.style.position = "fixed";
-  toast.style.bottom = "30px";
-  toast.style.left = "50%";
-  toast.style.transform = "translateX(-50%)";
-  toast.style.background = type === "success" ? "#05c19b" : "#e74c3c";
-  toast.style.color = "#fff";
-  toast.style.padding = "1rem 2rem";
-  toast.style.borderRadius = "8px";
-  toast.style.fontWeight = "bold";
-  toast.style.zIndex = "9999";
-  toast.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
-  document.body.appendChild(toast);
-  setTimeout(() => {
-    toast.remove();
-  }, 2500);
+  NotificationManager.show(message, type, 2500);
 }
 
-// Enhanced Notification System
 function showNotification(message, type = "info") {
-  // Remove any existing notifications
-  const existingNotification = document.querySelector(".notification");
-  if (existingNotification) {
-    existingNotification.remove();
-  }
-
-  // Create notification element
-  const notification = document.createElement("div");
-  notification.className = `notification notification-${type}`;
-  notification.innerHTML = `
-    <div class="notification-content">
-      <span class="notification-message">${message}</span>
-      <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
-    </div>
-  `;
-
-  // Add to page
-  document.body.appendChild(notification);
-
-  // Auto-remove after 5 seconds
-  setTimeout(() => {
-    if (notification && notification.parentElement) {
-      notification.remove();
-    }
-  }, 5000);
+  NotificationManager.show(message, type, 5000);
 }
 
-// Helper function to get auth headers
+// ===== AUTHENTICATION & LOCAL STORAGE =====
+const StorageManager = {
+  get(key, defaultValue = null) {
+    try {
+      const value = localStorage.getItem(key);
+      return value ? JSON.parse(value) : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  },
+  set(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  },
+  remove(key) {
+    localStorage.removeItem(key);
+  },
+  getToken() {
+    return localStorage.getItem("authToken");
+  },
+};
+
+// ===== API UTILITIES =====
 function getAuthHeaders() {
-  const token = localStorage.getItem("authToken");
-  const headers = {
+  const token = StorageManager.getToken();
+  return {
     "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
 }
 
-// Check if user is authenticated
 function checkAuthentication() {
-  const token = localStorage.getItem("authToken");
-  if (!token) {
-    // If on dashboard pages and no token, redirect to login
-    const currentPage = window.location.pathname;
-    if (
-      currentPage.includes("Dashboard.html") ||
-      currentPage.includes("profile.html")
-    ) {
-      window.location.href = "login.html";
-      return false;
-    }
+  const token = StorageManager.getToken();
+  if (!token && window.location.pathname.match(/(Dashboard|profile)\.html/)) {
+    window.location.href = "login.html";
+    return false;
   }
   return !!token;
 }
 
-// Logout function
 function logout() {
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("showLoginToast");
+  StorageManager.remove("authToken");
+  StorageManager.remove("showLoginToast");
+  StorageManager.remove("userData");
   window.location.href = "index.html";
 }
 
-// Helper function to get user stats
-function getUserStats() {
-  return (
-    JSON.parse(localStorage.getItem("userStats")) || {
-      daysActive: 0,
-      sessionsCompleted: 0,
-      moodEntries: 0,
-      goalsAchieved: 0,
+// ===== USER STATS MANAGEMENT =====
+const StatsManager = {
+  DEFAULT: {
+    daysActive: 0,
+    sessionsCompleted: 0,
+    moodEntries: 0,
+    goalsAchieved: 0,
+  },
+
+  get() {
+    return StorageManager.get("userStats", this.DEFAULT);
+  },
+
+  update(stats) {
+    StorageManager.set("userStats", stats);
+  },
+
+  increment(key, amount = 1) {
+    const stats = this.get();
+    if (key in stats) {
+      stats[key] += amount;
+      this.update(stats);
     }
-  );
+    return stats;
+  },
+};
+
+// Backward compatibility
+function getUserStats() {
+  return StatsManager.get();
 }
 
-// Helper function to update user stats
 function updateUserStats(stats) {
-  localStorage.setItem("userStats", JSON.stringify(stats));
-
-  // Also update the profile page stats if elements exist
-  updateProfileStats(stats);
+  StatsManager.update(stats);
 }
 
-// Helper function for updating profile stats (to prevent undefined error)
 function updateProfileStats(stats) {
-  // This function can be expanded to update profile-specific stat displays
-  // For now, it prevents the "updateProfileStats is not defined" error
   console.log("Profile stats updated:", stats);
+}
+
+// ===== TIME & DATE UTILITIES =====
+const TimeUtil = {
+  getTimeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    const intervals = [
+      { label: "year", seconds: 31536000 },
+      { label: "month", seconds: 2592000 },
+      { label: "day", seconds: 86400 },
+      { label: "hour", seconds: 3600 },
+      { label: "minute", seconds: 60 },
+    ];
+
+    for (const interval of intervals) {
+      const value = Math.floor(seconds / interval.seconds);
+      if (value >= 1) {
+        return `${value} ${interval.label}${value !== 1 ? "s" : ""} ago`;
+      }
+    }
+    return "Just now";
+  },
+
+  getMoodEmoji(level) {
+    return { 1: "😭", 2: "😢", 3: "😐", 4: "😊", 5: "😄" }[level] || "😊";
+  },
+};
+
+// Backward compatibility
+function getTimeAgo(date) {
+  return TimeUtil.getTimeAgo(date);
+}
+
+function getMoodEmoji(level) {
+  return TimeUtil.getMoodEmoji(level);
 }

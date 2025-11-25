@@ -39,93 +39,95 @@ class VideoCallManager {
     // Connect to Socket.IO server
     const serverUrl = window.location.origin; // or specify your server URL
     this.socket = io(serverUrl, {
-      transports: ['websocket', 'polling'],
+      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000
+      reconnectionDelay: 1000,
     });
 
-    this.socket.on('connect', () => {
-      console.log('Socket.IO connected:', this.socket.id);
+    this.socket.on("connect", () => {
+      console.log("Socket.IO connected:", this.socket.id);
       this.registerUser();
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('Socket.IO disconnected');
+    this.socket.on("disconnect", () => {
+      console.log("Socket.IO disconnected");
     });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('Socket.IO connection error:', error);
+    this.socket.on("connect_error", (error) => {
+      console.error("Socket.IO connection error:", error);
     });
 
     // Listen for incoming calls (therapist only)
-    this.socket.on('incoming-call', (data) => {
-      console.log('Incoming call received:', data);
+    this.socket.on("incoming-call", (data) => {
+      console.log("Incoming call received:", data);
       this.handleIncomingCallRequest(data);
     });
 
     // Listen for call accepted (user only)
-    this.socket.on('call-accepted', (data) => {
-      console.log('Call accepted by therapist:', data);
+    this.socket.on("call-accepted", (data) => {
+      console.log("Call accepted by therapist:", data);
       this.onCallAccepted(data);
     });
 
     // Listen for call connecting
-    this.socket.on('call-connecting', (data) => {
-      console.log('Call connecting to therapist:', data);
-      this.updateCallStatus('Connecting to ' + data.therapistName + '...');
+    this.socket.on("call-connecting", (data) => {
+      console.log("Call connecting to therapist:", data);
+      this.updateCallStatus("Connecting to " + data.therapistName + "...");
     });
 
     // Listen for no therapist available
-    this.socket.on('no-therapist-available', () => {
-      console.log('No therapist available');
-      alert('No therapist is currently available. Please try again later or request a callback.');
-      this.updateCallStatus('No therapist available');
+    this.socket.on("no-therapist-available", () => {
+      console.log("No therapist available");
+      alert(
+        "No therapist is currently available. Please try again later or request a callback."
+      );
+      this.updateCallStatus("No therapist available");
     });
 
     // Listen for call ended
-    this.socket.on('call-ended', () => {
-      console.log('Call ended by other party');
+    this.socket.on("call-ended", () => {
+      console.log("Call ended by other party");
       this.endCall();
     });
 
     // Listen for therapist availability updates
-    this.socket.on('therapist-availability-update', (data) => {
-      console.log('Therapist availability updated:', data);
+    this.socket.on("therapist-availability-update", (data) => {
+      console.log("Therapist availability updated:", data);
       this.therapistAvailable = data.availableCount > 0;
       this.updateUserTherapistStatus();
     });
 
     // WebRTC signaling
-    this.socket.on('offer', async (data) => {
-      console.log('Received offer from:', data.from);
+    this.socket.on("offer", async (data) => {
+      console.log("Received offer from:", data.from);
       await this.handleOffer(data.offer);
     });
 
-    this.socket.on('answer', async (data) => {
-      console.log('Received answer from:', data.from);
+    this.socket.on("answer", async (data) => {
+      console.log("Received answer from:", data.from);
       await this.handleAnswer(data.answer);
     });
 
-    this.socket.on('ice-candidate', async (data) => {
-      console.log('Received ICE candidate from:', data.from);
+    this.socket.on("ice-candidate", async (data) => {
+      console.log("Received ICE candidate from:", data.from);
       await this.handleIceCandidate(data.candidate);
     });
   }
 
   registerUser() {
     // Register with socket server
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    const userType = this.isTherapist ? 'therapist' : 'user';
-    const userName = userData.name || (this.isTherapist ? 'Therapist' : 'User');
-    
-    this.socket.emit('register', {
-      userId: userData.id || 'anonymous',
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    const userType = this.isTherapist ? "therapist" : "user";
+    const userName = userData.name || (this.isTherapist ? "Therapist" : "User");
+
+    this.socket.emit("register", {
+      userId: userData.id || "anonymous",
       userType: userType,
-      userName: userName
+      userName: userName,
     });
 
-    console.log('Registered as:', userType, userName);
+    console.log("Registered as:", userType, userName);
   }
 
   init() {
@@ -152,7 +154,7 @@ class VideoCallManager {
 
   setupEventListeners() {
     console.log("Setting up video call event listeners...");
-    
+
     // User dashboard event listeners
     const startCallBtn = document.getElementById("startCallBtn");
     const requestCallBtn = document.getElementById("requestCallBtn");
@@ -169,7 +171,7 @@ class VideoCallManager {
     } else {
       console.warn("Start call button not found");
     }
-    
+
     if (requestCallBtn) {
       requestCallBtn.addEventListener("click", () => this.requestCallback());
     }
@@ -209,14 +211,14 @@ class VideoCallManager {
 
   async startCall() {
     if (!this.socket || !this.socket.connected) {
-      alert('Not connected to server. Please refresh the page and try again.');
+      alert("Not connected to server. Please refresh the page and try again.");
       return;
     }
 
     try {
       // Update status to show we're requesting permissions
       this.updateCallStatus("Requesting camera and microphone access...");
-      
+
       // Get user media with proper error handling
       this.localStream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -231,12 +233,12 @@ class VideoCallManager {
       }
 
       this.localVideo.srcObject = this.localStream;
-      
+
       // Ensure local video plays
-      this.localVideo.play().catch(err => {
-        console.error('Error playing local video:', err);
+      this.localVideo.play().catch((err) => {
+        console.error("Error playing local video:", err);
       });
-      
+
       videoContainer.style.display = "block";
 
       this.isCallActive = true;
@@ -249,31 +251,43 @@ class VideoCallManager {
       }
 
       // Request call via Socket.IO
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      this.socket.emit('request-call', {
-        userName: userData.name || 'Anonymous User',
-        userId: userData.id || 'anonymous'
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      this.socket.emit("request-call", {
+        userName: userData.name || "Anonymous User",
+        userId: userData.id || "anonymous",
       });
 
-      console.log('Call request sent to server');
+      console.log("Call request sent to server");
     } catch (error) {
       console.error("Error starting call:", error);
-      
+
       let errorMessage = "Error accessing camera/microphone. ";
-      
-      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        errorMessage += "Please grant camera and microphone permissions in your browser settings and try again.";
-      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-        errorMessage += "No camera or microphone found. Please connect a device and try again.";
-      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-        errorMessage += "Your camera or microphone is already in use by another application.";
+
+      if (
+        error.name === "NotAllowedError" ||
+        error.name === "PermissionDeniedError"
+      ) {
+        errorMessage +=
+          "Please grant camera and microphone permissions in your browser settings and try again.";
+      } else if (
+        error.name === "NotFoundError" ||
+        error.name === "DevicesNotFoundError"
+      ) {
+        errorMessage +=
+          "No camera or microphone found. Please connect a device and try again.";
+      } else if (
+        error.name === "NotReadableError" ||
+        error.name === "TrackStartError"
+      ) {
+        errorMessage +=
+          "Your camera or microphone is already in use by another application.";
       } else {
         errorMessage += "Please check your device settings and try again.";
       }
-      
+
       alert(errorMessage);
       this.updateCallStatus("Call failed - " + error.name);
-      
+
       // Show start button again
       const startBtn = document.getElementById("startCallBtn");
       if (startBtn) {
@@ -296,12 +310,14 @@ class VideoCallManager {
   // Handle incoming call request (Therapist side)
   handleIncomingCallRequest(data) {
     const { roomId, userName, userId } = data;
-    console.log('Incoming call from:', userName, 'Room:', roomId);
+    console.log("Incoming call from:", userName, "Room:", roomId);
 
     // Check if this call is already in the list (prevent duplicates)
-    const existingCall = this.incomingCalls.find(call => call.roomId === roomId);
+    const existingCall = this.incomingCalls.find(
+      (call) => call.roomId === roomId
+    );
     if (existingCall) {
-      console.log('Call already exists in queue, ignoring duplicate');
+      console.log("Call already exists in queue, ignoring duplicate");
       return;
     }
 
@@ -315,7 +331,7 @@ class VideoCallManager {
     if (window.Notification && Notification.permission === "granted") {
       new Notification("Incoming Call", {
         body: `${userName} is calling you`,
-        icon: '/assets/profile-pictures/default-avatar.svg'
+        icon: "/assets/profile-pictures/default-avatar.svg",
       });
     }
 
@@ -325,28 +341,29 @@ class VideoCallManager {
 
   playNotificationSound() {
     // Create a simple beep sound
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
-    
+
     oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
+    oscillator.type = "sine";
     gainNode.gain.value = 0.3;
-    
+
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.2);
   }
 
   // Accept incoming call (Therapist side)
   async acceptCall(userName, roomId) {
-    console.log('Accepting call from:', userName, 'Room:', roomId);
-    
+    console.log("Accepting call from:", userName, "Room:", roomId);
+
     // Remove from incoming calls list
     this.removeFromIncomingCalls(roomId);
-    
+
     try {
       // Get therapist's media stream
       this.localStream = await navigator.mediaDevices.getUserMedia({
@@ -354,20 +371,24 @@ class VideoCallManager {
         audio: true,
       });
 
-      const therapistVideoContainer = document.getElementById("therapistVideoCallContainer");
-      const therapistLocalVideo = document.getElementById("therapistLocalVideo");
+      const therapistVideoContainer = document.getElementById(
+        "therapistVideoCallContainer"
+      );
+      const therapistLocalVideo = document.getElementById(
+        "therapistLocalVideo"
+      );
 
       if (!therapistLocalVideo) {
         throw new Error("Therapist video element not found");
       }
 
       therapistLocalVideo.srcObject = this.localStream;
-      
+
       // Ensure therapist local video plays
-      therapistLocalVideo.play().catch(err => {
-        console.error('Error playing therapist local video:', err);
+      therapistLocalVideo.play().catch((err) => {
+        console.error("Error playing therapist local video:", err);
       });
-      
+
       therapistVideoContainer.style.display = "block";
 
       this.isCallActive = true;
@@ -387,13 +408,13 @@ class VideoCallManager {
       }
 
       // Accept call via Socket.IO
-      this.socket.emit('accept-call', { roomId });
+      this.socket.emit("accept-call", { roomId });
 
       // Initialize WebRTC peer connection
       await this.createPeerConnection(roomId);
       await this.createAndSendOffer(roomId);
 
-      console.log('Call accepted, WebRTC negotiation started');
+      console.log("Call accepted, WebRTC negotiation started");
     } catch (error) {
       console.error("Error accepting call:", error);
       alert("Error accessing camera/microphone. Please check permissions.");
@@ -403,8 +424,8 @@ class VideoCallManager {
   // Called when therapist accepts the call (User side)
   async onCallAccepted(data) {
     const { roomId } = data;
-    console.log('Therapist accepted call, room:', roomId);
-    
+    console.log("Therapist accepted call, room:", roomId);
+
     this.currentRoomId = roomId;
     this.updateCallStatus("Therapist joined - Connecting...");
     this.startCallTimer();
@@ -417,52 +438,59 @@ class VideoCallManager {
   async createPeerConnection(roomId) {
     const configuration = {
       iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-      ]
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ],
     };
 
     this.peerConnection = new RTCPeerConnection(configuration);
-    console.log('WebRTC peer connection created');
+    console.log("WebRTC peer connection created");
 
     // Add local stream to peer connection
-    this.localStream.getTracks().forEach(track => {
+    this.localStream.getTracks().forEach((track) => {
       this.peerConnection.addTrack(track, this.localStream);
-      console.log('Added track to peer connection:', track.kind);
+      console.log("Added track to peer connection:", track.kind);
     });
 
     // Handle incoming remote stream
     this.peerConnection.ontrack = (event) => {
-      console.log('Received remote track:', event.track.kind);
-      
+      console.log("Received remote track:", event.track.kind);
+
       // Use the first stream from the event
       if (event.streams && event.streams[0]) {
-        const remoteVideo = this.isTherapist 
+        const remoteVideo = this.isTherapist
           ? document.getElementById("therapistRemoteVideo")
           : document.getElementById("remoteVideo");
-        
+
         if (remoteVideo) {
           remoteVideo.srcObject = event.streams[0];
           this.remoteStream = event.streams[0];
-          console.log('Remote video stream connected:', event.streams[0].id);
-          
+          console.log("Remote video stream connected:", event.streams[0].id);
+
           // Ensure video plays
-          remoteVideo.play().then(() => {
-            console.log('Remote video is playing');
-          }).catch(err => {
-            console.error('Error playing remote video:', err);
-            // Try to play again after a short delay
-            setTimeout(() => {
-              remoteVideo.play().catch(e => console.error('Retry failed:', e));
-            }, 500);
-          });
-          
+          remoteVideo
+            .play()
+            .then(() => {
+              console.log("Remote video is playing");
+            })
+            .catch((err) => {
+              console.error("Error playing remote video:", err);
+              // Try to play again after a short delay
+              setTimeout(() => {
+                remoteVideo
+                  .play()
+                  .catch((e) => console.error("Retry failed:", e));
+              }, 500);
+            });
+
           // Log track states
-          event.streams[0].getTracks().forEach(track => {
-            console.log(`Remote ${track.kind} track - enabled: ${track.enabled}, muted: ${track.muted}, readyState: ${track.readyState}`);
+          event.streams[0].getTracks().forEach((track) => {
+            console.log(
+              `Remote ${track.kind} track - enabled: ${track.enabled}, muted: ${track.muted}, readyState: ${track.readyState}`
+            );
           });
         } else {
-          console.error('Remote video element not found!');
+          console.error("Remote video element not found!");
         }
       }
     };
@@ -470,24 +498,24 @@ class VideoCallManager {
     // Handle ICE candidates
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-        console.log('Sending ICE candidate');
-        this.socket.emit('ice-candidate', {
+        console.log("Sending ICE candidate");
+        this.socket.emit("ice-candidate", {
           roomId: roomId,
-          candidate: event.candidate
+          candidate: event.candidate,
         });
       }
     };
 
     // Handle connection state changes
     this.peerConnection.onconnectionstatechange = () => {
-      console.log('Connection state:', this.peerConnection.connectionState);
-      if (this.peerConnection.connectionState === 'connected') {
-        this.updateCallStatus('Connected');
-      } else if (this.peerConnection.connectionState === 'disconnected') {
-        this.updateCallStatus('Disconnected');
-      } else if (this.peerConnection.connectionState === 'failed') {
-        this.updateCallStatus('Connection failed');
-        alert('Connection failed. Please try again.');
+      console.log("Connection state:", this.peerConnection.connectionState);
+      if (this.peerConnection.connectionState === "connected") {
+        this.updateCallStatus("Connected");
+      } else if (this.peerConnection.connectionState === "disconnected") {
+        this.updateCallStatus("Disconnected");
+      } else if (this.peerConnection.connectionState === "failed") {
+        this.updateCallStatus("Connection failed");
+        alert("Connection failed. Please try again.");
         this.endCall();
       }
     };
@@ -498,44 +526,48 @@ class VideoCallManager {
     try {
       const offer = await this.peerConnection.createOffer();
       await this.peerConnection.setLocalDescription(offer);
-      
-      console.log('Sending offer to room:', roomId);
-      this.socket.emit('offer', {
+
+      console.log("Sending offer to room:", roomId);
+      this.socket.emit("offer", {
         roomId: roomId,
-        offer: offer
+        offer: offer,
       });
     } catch (error) {
-      console.error('Error creating offer:', error);
+      console.error("Error creating offer:", error);
     }
   }
 
   // Handle received offer (User side)
   async handleOffer(offer) {
     try {
-      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-      console.log('Remote description set from offer');
-      
+      await this.peerConnection.setRemoteDescription(
+        new RTCSessionDescription(offer)
+      );
+      console.log("Remote description set from offer");
+
       const answer = await this.peerConnection.createAnswer();
       await this.peerConnection.setLocalDescription(answer);
-      
-      console.log('Sending answer to room:', this.currentRoomId);
-      this.socket.emit('answer', {
+
+      console.log("Sending answer to room:", this.currentRoomId);
+      this.socket.emit("answer", {
         roomId: this.currentRoomId,
-        answer: answer
+        answer: answer,
       });
     } catch (error) {
-      console.error('Error handling offer:', error);
+      console.error("Error handling offer:", error);
     }
   }
 
   // Handle received answer (Therapist side)
   async handleAnswer(answer) {
     try {
-      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-      console.log('Remote description set from answer');
-      this.updateCallStatus('Connected');
+      await this.peerConnection.setRemoteDescription(
+        new RTCSessionDescription(answer)
+      );
+      console.log("Remote description set from answer");
+      this.updateCallStatus("Connected");
     } catch (error) {
-      console.error('Error handling answer:', error);
+      console.error("Error handling answer:", error);
     }
   }
 
@@ -543,9 +575,9 @@ class VideoCallManager {
   async handleIceCandidate(candidate) {
     try {
       await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      console.log('ICE candidate added');
+      console.log("ICE candidate added");
     } catch (error) {
-      console.error('Error adding ICE candidate:', error);
+      console.error("Error adding ICE candidate:", error);
     }
   }
 
@@ -578,19 +610,19 @@ class VideoCallManager {
   }
 
   endCall() {
-    console.log('Ending call...');
-    
+    console.log("Ending call...");
+
     // Stop all tracks
     if (this.localStream) {
       this.localStream.getTracks().forEach((track) => {
         track.stop();
-        console.log('Stopped local track:', track.kind);
+        console.log("Stopped local track:", track.kind);
       });
     }
     if (this.remoteStream) {
       this.remoteStream.getTracks().forEach((track) => {
         track.stop();
-        console.log('Stopped remote track:', track.kind);
+        console.log("Stopped remote track:", track.kind);
       });
     }
 
@@ -598,12 +630,12 @@ class VideoCallManager {
     if (this.peerConnection) {
       this.peerConnection.close();
       this.peerConnection = null;
-      console.log('Peer connection closed');
+      console.log("Peer connection closed");
     }
 
     // Notify server
     if (this.socket && this.currentRoomId) {
-      this.socket.emit('end-call', { roomId: this.currentRoomId });
+      this.socket.emit("end-call", { roomId: this.currentRoomId });
     }
 
     this.isCallActive = false;
@@ -630,7 +662,7 @@ class VideoCallManager {
     }
 
     this.updateCallStatus("Call ended");
-    console.log('Call ended successfully');
+    console.log("Call ended successfully");
   }
 
   toggleMute() {
@@ -703,7 +735,9 @@ class VideoCallManager {
             <span class="call-user">📞 ${call.username}</span>
             <span class="call-time">${call.time.toLocaleTimeString()}</span>
           </div>
-          <button class="btn btn-small btn-accept" onclick="videoCallManager.acceptCall('${call.username}', '${call.roomId}')">
+          <button class="btn btn-small btn-accept" onclick="videoCallManager.acceptCall('${
+            call.username
+          }', '${call.roomId}')">
             <i class="fas fa-phone"></i> Accept
           </button>
         </div>
@@ -728,6 +762,9 @@ class VideoCallManager {
   }
 
   toggleTherapistAvailability(available) {
+    console.log("=== TOGGLE THERAPIST AVAILABILITY ===");
+    console.log("Setting availability to:", available);
+
     this.therapistAvailable = available;
     const indicator = document.getElementById("therapistStatusIndicator");
     const text = document.getElementById("therapistStatusText");
@@ -736,50 +773,48 @@ class VideoCallManager {
       if (available) {
         indicator.className = "therapist-status-indicator online";
         text.textContent = "Online";
+        console.log("✅ UI updated to ONLINE");
       } else {
         indicator.className = "therapist-status-indicator offline";
         text.textContent = "Offline";
+        console.log("✅ UI updated to OFFLINE");
       }
     }
 
     // Notify server of availability change
     if (this.socket && this.socket.connected) {
-      this.socket.emit('toggle-therapist-availability', available);
-      console.log('Therapist availability set to:', available);
+      console.log("📡 Socket connected, emitting toggle event...");
+      this.socket.emit("toggle-therapist-availability", available);
+      console.log("✅ Toggle event emitted, availability set to:", available);
+
+      // Also emit to update all users
+      this.socket.emit("therapist-availability-update", {
+        availableCount: available ? 1 : 0,
+      });
+    } else {
+      console.warn("⚠️ Socket not connected, retrying in 1 second...");
+      // Try to reconnect and emit
+      setTimeout(() => {
+        if (this.socket && this.socket.connected) {
+          this.socket.emit("toggle-therapist-availability", available);
+          console.log("✅ Retry successful, toggle event emitted");
+        } else {
+          console.error("❌ Socket still not connected after retry");
+        }
+      }, 1000);
     }
 
+    console.log("=== END TOGGLE ===");
     // Update user dashboard status
     this.updateUserTherapistStatus();
   }
 
   checkTherapistAvailability() {
-    // Simulate checking therapist availability
+    // Therapist availability is already being listened to in initializeSocket
+    // Just update the user interface with current availability status
     setTimeout(() => {
-      const status = document.getElementById("therapistStatus");
-      const startBtn = document.getElementById("startCallBtn");
-
-      if (status) {
-        if (this.therapistAvailable) {
-          status.innerHTML = `
-            <span class="status-indicator online"></span>
-            <span class="status-text">Therapist available</span>
-          `;
-          if (startBtn) {
-            startBtn.disabled = false;
-            console.log("Start call button enabled");
-          }
-        } else {
-          status.innerHTML = `
-            <span class="status-indicator offline"></span>
-            <span class="status-text">Therapist offline</span>
-          `;
-          if (startBtn) {
-            startBtn.disabled = true;
-            console.log("Start call button disabled - no therapist available");
-          }
-        }
-      }
-    }, 1000);
+      this.updateUserTherapistStatus();
+    }, 500);
   }
 
   updateUserTherapistStatus() {

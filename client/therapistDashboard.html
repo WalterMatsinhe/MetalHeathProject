@@ -127,7 +127,7 @@
                   <span class="stat-label">Active Clients</span>
                 </div>
               </div>
-              <div class="stat-card stat-card-green">
+              <div class="stat-card stat-card-blue">
                 <div class="stat-icon">
                   <i class="fas fa-video"></i>
                 </div>
@@ -136,7 +136,7 @@
                   <span class="stat-label">Sessions Today</span>
                 </div>
               </div>
-              <div class="stat-card stat-card-purple">
+              <div class="stat-card stat-card-blue">
                 <div class="stat-icon">
                   <i class="fas fa-comments"></i>
                 </div>
@@ -147,7 +147,7 @@
                   <span class="stat-label">Unread Messages</span>
                 </div>
               </div>
-              <div class="stat-card stat-card-orange">
+              <div class="stat-card stat-card-blue">
                 <div class="stat-icon">
                   <i class="fas fa-clock"></i>
                 </div>
@@ -282,7 +282,7 @@
           <section class="insights-section">
             <h3 class="dashboard-subtitle">Client Insights & Alerts</h3>
             <div class="insights-grid">
-              <div class="insight-card insight-info">
+              <div class="     insight-info">
                 <div class="insight-header">
                   <i class="fas fa-info-circle"></i>
                   <span>Active Conversations</span>
@@ -873,66 +873,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Professional Stats Management -->
-          <div class="profile-form-section">
-            <h3 class="section-subtitle accent">Update Professional Stats</h3>
-            <form id="professionalStatsForm" class="profile-form">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="patientsHelped">Patients Helped</label>
-                  <input
-                    type="number"
-                    id="patientsHelped"
-                    name="patientsHelped"
-                    min="0"
-                    placeholder="Enter total patients helped"
-                  />
-                </div>
-                <div class="form-group">
-                  <label for="hoursThisMonth">Hours This Month</label>
-                  <input
-                    type="number"
-                    id="hoursThisMonth"
-                    name="hoursThisMonth"
-                    min="0"
-                    placeholder="Enter hours worked this month"
-                  />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="averageRating">Average Rating</label>
-                  <input
-                    type="number"
-                    id="averageRating"
-                    name="averageRating"
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    placeholder="0.0 - 5.0"
-                  />
-                </div>
-                <div class="form-group">
-                  <label for="yearsOnPlatform">Years on Platform</label>
-                  <input
-                    type="number"
-                    id="yearsOnPlatform"
-                    name="yearsOnPlatform"
-                    min="0"
-                    step="0.1"
-                    placeholder="Automatically calculated"
-                    readonly
-                    style="background-color: #f5f5f5; cursor: not-allowed"
-                    title="This is automatically calculated based on your account creation date"
-                  />
-                </div>
-              </div>
-              <button type="submit" class="submit-btn">
-                Update Professional Stats
-              </button>
-            </form>
-          </div>
         </section>
 
         <!-- Chat Section -->
@@ -1004,12 +944,25 @@
                   </div>
                 </div>
                 <div class="chat-header-actions">
-                  <button class="btn-icon-action" title="Video call">
+                  <button class="btn-icon-action" title="Video call" onclick="showSection('support')">
                     <i class="fa-solid fa-video"></i>
                   </button>
-                  <button class="btn-icon-action" title="More options">
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                  </button>
+                  <div class="chat-options-container">
+                    <button class="btn-icon-action" title="More options" onclick="chatManager?.toggleChatOptions()">
+                      <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <div class="chat-options-menu" id="chatOptionsMenu" style="display: none">
+                      <button class="option-item" onclick="chatManager?.viewUserProfile()">
+                        <i class="fa-solid fa-user"></i> View Profile
+                      </button>
+                      <button class="option-item" onclick="chatManager?.clearChatHistory()">
+                        <i class="fa-solid fa-trash"></i> Clear History
+                      </button>
+                      <button class="option-item" onclick="chatManager?.blockUser()">
+                        <i class="fa-solid fa-ban"></i> Block User
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 

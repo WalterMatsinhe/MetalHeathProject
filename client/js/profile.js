@@ -13,10 +13,15 @@ class ProfileAPI {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch profile");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Failed to fetch profile (${response.status})`
+        );
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log("Profile data fetched successfully:", data);
+      return data;
     } catch (error) {
       console.error("Get profile error:", error);
       throw error;
@@ -77,27 +82,6 @@ class ProfileAPI {
       return await response.json();
     } catch (error) {
       console.error("Upload image error:", error);
-      throw error;
-    }
-  }
-
-  static async updateStats(statsData) {
-    try {
-      const response = await fetch("/api/profile/stats", {
-        method: "PUT",
-        credentials: "include",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(statsData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update stats");
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error("Update stats error:", error);
       throw error;
     }
   }
@@ -214,23 +198,6 @@ function initializeProfileForms() {
     );
     loadTherapistProfileData();
   }
-
-  // Professional stats form for therapist
-  const professionalStatsForm = document.getElementById(
-    "professionalStatsForm"
-  );
-  if (professionalStatsForm) {
-    professionalStatsForm.addEventListener(
-      "submit",
-      handleProfessionalStatsSubmit
-    );
-  }
-
-  // User stats form for user dashboard
-  const userStatsForm = document.getElementById("userStatsForm");
-  if (userStatsForm) {
-    userStatsForm.addEventListener("submit", handleUserStatsSubmit);
-  }
 }
 
 async function handleUserProfileSubmit(event) {
@@ -330,111 +297,22 @@ async function handleTherapistProfileSubmit(event) {
   }
 }
 
-async function handleProfessionalStatsSubmit(event) {
-  event.preventDefault();
-
-  try {
-    const formData = new FormData(event.target);
-    const statsData = Object.fromEntries(formData.entries());
-
-    // Convert string values to numbers where appropriate and filter out empty values
-    const processedStatsData = {};
-    if (statsData.patientsHelped && statsData.patientsHelped.trim() !== "") {
-      processedStatsData.patientsHelped = parseInt(statsData.patientsHelped);
-    }
-    if (statsData.hoursThisMonth && statsData.hoursThisMonth.trim() !== "") {
-      processedStatsData.hoursThisMonth = parseInt(statsData.hoursThisMonth);
-    }
-    if (statsData.averageRating && statsData.averageRating.trim() !== "") {
-      processedStatsData.averageRating = parseFloat(statsData.averageRating);
-    }
-
-    // Don't send yearsOnPlatform as it's automatically calculated
-    // Only send data if there's something to update
-    if (Object.keys(processedStatsData).length === 0) {
-      showNotification(
-        "Please enter at least one statistic to update",
-        "warning"
-      );
-      return;
-    }
-
-    showNotification("Updating professional stats...", "info");
-
-    const response = await ProfileAPI.updateStats(processedStatsData);
-    showNotification("Professional stats updated successfully!", "success");
-
-    // Update the displayed stats and clear the form
-    updateTherapistStats(response.stats);
-    event.target.reset();
-  } catch (error) {
-    console.error("Error updating professional stats:", error);
-    showNotification(error.message || "Failed to update stats", "error");
-  }
-}
-
-async function handleUserStatsSubmit(event) {
-  event.preventDefault();
-
-  try {
-    const formData = new FormData(event.target);
-    const statsData = Object.fromEntries(formData.entries());
-
-    // Convert string values to numbers where appropriate and filter out empty values
-    const processedStatsData = {};
-    if (statsData.daysActive && statsData.daysActive.trim() !== "") {
-      processedStatsData.daysActive = parseInt(statsData.daysActive);
-    }
-    if (
-      statsData.sessionsCompleted &&
-      statsData.sessionsCompleted.trim() !== ""
-    ) {
-      processedStatsData.sessionsCompleted = parseInt(
-        statsData.sessionsCompleted
-      );
-    }
-    if (statsData.moodEntries && statsData.moodEntries.trim() !== "") {
-      processedStatsData.moodEntries = parseInt(statsData.moodEntries);
-    }
-    if (statsData.goalsAchieved && statsData.goalsAchieved.trim() !== "") {
-      processedStatsData.goalsAchieved = parseInt(statsData.goalsAchieved);
-    }
-
-    // Only send data if there's something to update
-    if (Object.keys(processedStatsData).length === 0) {
-      showNotification(
-        "Please enter at least one statistic to update",
-        "warning"
-      );
-      return;
-    }
-
-    showNotification("Updating your progress...", "info");
-
-    const response = await ProfileAPI.updateStats(processedStatsData);
-    showNotification("Progress updated successfully!", "success");
-
-    // Update the displayed stats and clear the form
-    updateUserStats(response.stats);
-    event.target.reset();
-  } catch (error) {
-    console.error("Error updating user stats:", error);
-    showNotification(error.message || "Failed to update progress", "error");
-  }
-}
-
 async function loadUserProfileData() {
   try {
     if (!checkAuthentication()) {
+      console.warn("Not authenticated");
       return;
     }
 
+    console.log("Loading user profile data...");
     const userData = await ProfileAPI.getProfile();
+    console.log("User data received:", userData);
 
     // Update profile image
     const profileImage = document.getElementById("profileImage");
     if (profileImage && userData.profilePicture) {
       profileImage.src = userData.profilePicture;
+      console.log("Profile image updated");
     }
 
     // Update sidebar with real user data
@@ -445,18 +323,23 @@ async function loadUserProfileData() {
 
     // Store user data in localStorage for persistence
     localStorage.setItem("userData", JSON.stringify(userData));
+    console.log("User data stored in localStorage");
 
-    // Populate form
-    populateForm("profileForm", userData);
-
-    // Populate user stats form
-    populateUserStatsForm(userData.stats);
+    // Populate form if it exists
+    const profileForm = document.getElementById("profileForm");
+    if (profileForm) {
+      populateForm("profileForm", userData);
+      console.log("Profile form populated");
+    }
 
     // Update statistics
-    updateUserStats(userData.stats);
+    if (userData.stats) {
+      updateUserStats(userData.stats);
+      console.log("User stats updated");
+    }
   } catch (error) {
     console.error("Failed to load user profile:", error);
-    showNotification("Failed to load profile data", "error");
+    showNotification("Failed to load profile data: " + error.message, "error");
   }
 }
 
@@ -486,10 +369,7 @@ async function loadTherapistProfileData() {
     // Populate form
     populateForm("therapistProfileForm", userData);
 
-    // Populate professional stats form
-    populateProfessionalStatsForm(userData.stats);
-
-    // Update statistics
+    // Auto-load and display professional stats
     updateTherapistStats(userData.stats);
   } catch (error) {
     console.error("Failed to load therapist profile:", error);
@@ -555,46 +435,6 @@ function populateForm(formId, data) {
   }
 }
 
-function populateProfessionalStatsForm(stats) {
-  const form = document.getElementById("professionalStatsForm");
-  if (!form || !stats) return;
-
-  // Populate each stats field
-  const fields = [
-    "patientsHelped",
-    "hoursThisMonth",
-    "averageRating",
-    "yearsOnPlatform",
-  ];
-
-  fields.forEach((field) => {
-    const input = form.querySelector(`[name="${field}"]`);
-    if (input && stats[field] !== undefined && stats[field] !== null) {
-      input.value = stats[field];
-    }
-  });
-}
-
-function populateUserStatsForm(stats) {
-  const form = document.getElementById("userStatsForm");
-  if (!form || !stats) return;
-
-  // Populate each stats field for user
-  const fields = [
-    "daysActive",
-    "sessionsCompleted",
-    "moodEntries",
-    "goalsAchieved",
-  ];
-
-  fields.forEach((field) => {
-    const input = form.querySelector(`[name="${field}"]`);
-    if (input && stats[field] !== undefined && stats[field] !== null) {
-      input.value = stats[field];
-    }
-  });
-}
-
 function updateTherapistStats(stats) {
   if (!stats) return;
 
@@ -628,23 +468,44 @@ function updateTherapistStats(stats) {
   }
 }
 
-function updateProfileDisplay(profileData) {
-  // Update any display elements based on the new profile data
-  console.log("Profile updated:", profileData);
+function updateUserStats(stats) {
+  if (!stats) return;
 
-  // Update sidebar profile
-  const fullName = `${profileData.firstName || ""} ${
-    profileData.lastName || ""
-  }`.trim();
-  updateSidebarProfile(profileData.profileImage, fullName || "User");
+  console.log("Updating user stats:", stats);
 
-  // Store user data in localStorage for persistence
-  localStorage.setItem("userData", JSON.stringify(profileData));
-}
+  // Update user stats display from automatic progress tracking
+  if (window.location.pathname.includes("userDashboard")) {
+    // Get the stats section
+    const statsSection = document.querySelector(".profile-stats");
+    if (!statsSection) {
+      console.warn("Stats section not found");
+      return;
+    }
 
-function updateTherapistProfileDisplay(profileData) {
-  // Update any display elements based on the new therapist profile data
-  console.log("Therapist profile updated:", profileData);
+    const statCards = statsSection.querySelectorAll(".stat-card");
+    if (statCards.length < 4) {
+      console.warn("Not enough stat cards found:", statCards.length);
+      return;
+    }
+
+    // Map stats to their card positions
+    const statKeys = [
+      "daysActive",
+      "sessionsCompleted",
+      "moodEntries",
+      "goalsAchieved",
+    ];
+
+    statKeys.forEach((key, index) => {
+      if (stats[key] !== undefined && statCards[index]) {
+        const statNumber = statCards[index].querySelector(".stat-number");
+        if (statNumber) {
+          statNumber.textContent = stats[key];
+          console.log(`Updated ${key} to ${stats[key]}`);
+        }
+      }
+    });
+  }
 }
 
 async function resetForm() {

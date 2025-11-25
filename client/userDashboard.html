@@ -167,7 +167,7 @@
                   <span class="stat-label">Days Active</span>
                 </div>
               </div>
-              <div class="stat-card stat-card-green">
+              <div class="stat-card stat-card-blue">
                 <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
                 <div class="stat-content">
                   <span class="stat-number" id="dashboardSessionsCompleted"
@@ -176,14 +176,14 @@
                   <span class="stat-label">Sessions Completed</span>
                 </div>
               </div>
-              <div class="stat-card stat-card-purple">
+              <div class="stat-card stat-card-blue">
                 <div class="stat-icon"><i class="fas fa-smile"></i></div>
                 <div class="stat-content">
                   <span class="stat-number" id="dashboardMoodEntries">0</span>
                   <span class="stat-label">Mood Entries</span>
                 </div>
               </div>
-              <div class="stat-card stat-card-orange">
+              <div class="stat-card stat-card-blue">
                 <div class="stat-icon"><i class="fas fa-bullseye"></i></div>
                 <div class="stat-content">
                   <span class="stat-number" id="dashboardGoalsAchieved">0</span>
@@ -1110,23 +1110,42 @@
           <!-- Mood Charts -->
           <section class="mood-section">
             <h3 class="accent mood-subtitle">Mood Trends & Insights</h3>
+            
+            <div class="mood-insights-simple">
+              <div class="insight-card">
+                <div class="insight-number" id="moodTrend">📈</div>
+                <div class="insight-text">
+                  <div class="insight-label">Mood Trend</div>
+                  <div class="insight-value" id="moodTrendText">Improving</div>
+                </div>
+              </div>
+              <div class="insight-card">
+                <div class="insight-number" id="energyTrend">⚡</div>
+                <div class="insight-text">
+                  <div class="insight-label">Energy Level</div>
+                  <div class="insight-value" id="energyTrendText">Stable</div>
+                </div>
+              </div>
+              <div class="insight-card">
+                <div class="insight-number" id="stressTrend">✨</div>
+                <div class="insight-text">
+                  <div class="insight-label">Stress Level</div>
+                  <div class="insight-value" id="stressTrendText">Decreasing</div>
+                </div>
+              </div>
+            </div>
+
             <div class="mood-charts-grid">
               <div class="mood-chart-card">
                 <h4 class="chart-title">Mood Over Time</h4>
                 <div class="chart-wrapper">
                   <canvas id="moodTrendChart"></canvas>
                 </div>
-                <div id="trendSummary" class="chart-summary">
-                  <!-- Trend summary will be loaded here -->
-                </div>
               </div>
               <div class="mood-chart-card">
                 <h4 class="chart-title">Mood Distribution</h4>
                 <div class="chart-wrapper">
                   <canvas id="moodDistributionChart"></canvas>
-                </div>
-                <div id="distributionSummary" class="chart-summary">
-                  <!-- Distribution summary will be loaded here -->
                 </div>
               </div>
             </div>
@@ -1234,7 +1253,7 @@
                     class="btn btn-primary video-call-btn"
                     disabled
                   >
-                    <span class="btn-icon"><i class="fas fa-video" style="font-size: 24px; color: black;"></i></span>
+                    <span class="btn-iconi class="fas fa-video" style="font-size: 24px; color: black;"></i></span>
                     Start Video Call
                   </button>
                 </div>
@@ -1516,58 +1535,6 @@
               </div>
             </div>
           </div>
-
-          <!-- User Stats Management -->
-          <div class="profile-form-section">
-            <h3 class="section-subtitle accent">Track Your Progress</h3>
-            <form id="userStatsForm" class="profile-form">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="userDaysActive">Days Active</label>
-                  <input
-                    type="number"
-                    id="userDaysActive"
-                    name="daysActive"
-                    min="0"
-                    placeholder="Update days active"
-                  />
-                </div>
-                <div class="form-group">
-                  <label for="userSessionsCompleted">Sessions Completed</label>
-                  <input
-                    type="number"
-                    id="userSessionsCompleted"
-                    name="sessionsCompleted"
-                    min="0"
-                    placeholder="Update sessions completed"
-                  />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="userMoodEntries">Mood Entries</label>
-                  <input
-                    type="number"
-                    id="userMoodEntries"
-                    name="moodEntries"
-                    min="0"
-                    placeholder="Update mood entries"
-                  />
-                </div>
-                <div class="form-group">
-                  <label for="userGoalsAchieved">Goals Achieved</label>
-                  <input
-                    type="number"
-                    id="userGoalsAchieved"
-                    name="goalsAchieved"
-                    min="0"
-                    placeholder="Update goals achieved"
-                  />
-                </div>
-              </div>
-              <button type="submit" class="submit-btn">Update Progress</button>
-            </form>
-          </div>
         </section>
 
         <!-- Chat Section -->
@@ -1641,12 +1608,25 @@
                   </div>
                 </div>
                 <div class="chat-header-actions">
-                  <button class="btn-icon-action" title="Video call">
+                  <button class="btn-icon-action" title="Video call" onclick="showSection('support')">
                     <i class="fa-solid fa-video"></i>
                   </button>
-                  <button class="btn-icon-action" title="More options">
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                  </button>
+                  <div class="chat-options-container">
+                    <button class="btn-icon-action" title="More options" onclick="chatManager?.toggleChatOptions()">
+                      <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <div class="chat-options-menu" id="chatOptionsMenu" style="display: none">
+                      <button class="option-item" onclick="chatManager?.viewTherapistProfile()">
+                        <i class="fa-solid fa-user"></i> View Profile
+                      </button>
+                      <button class="option-item" onclick="chatManager?.clearChatHistory()">
+                        <i class="fa-solid fa-trash"></i> Clear History
+                      </button>
+                      <button class="option-item" onclick="chatManager?.reportTherapist()">
+                        <i class="fa-solid fa-flag"></i> Report
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 

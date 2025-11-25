@@ -89,24 +89,34 @@ const Message = require("./models/Message");
 // JWT Middleware
 const { auth, therapist } = require("./middleware/auth");
 
-// Add direct route for therapists (delegates to chat route)
+// Add direct route for therapists with proper online status
 app.get("/api/therapists", auth, async (req, res) => {
   try {
     const therapists = await User.find({
       role: "therapist",
+      registrationStatus: { $ne: "rejected" },
     }).select(
-      "name firstName lastName specialization yearsExperience bio areasOfExpertise languagesSpoken stats"
+      "firstName lastName specialization yearsExperience bio areasOfExpertise languagesSpoken stats profilePicture"
     );
 
-    // Add online status (in a real app, this would come from a session store)
+    // Get connected users map for accurate online status
+    const connectedUsers = app.get("connectedUsers") || new Map();
+
+    // Helper function to check if user is online
+    const isOnline = (userId) => {
+      for (const [socketId, user] of connectedUsers.entries()) {
+        if (user.userId && user.userId.toString() === userId.toString()) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Add online status based on actual connections
     const therapistsWithStatus = therapists.map((therapist) => ({
       ...therapist.toObject(),
-      status:
-        Math.random() > 0.3
-          ? "online"
-          : Math.random() > 0.5
-          ? "away"
-          : "offline",
+      status: isOnline(therapist._id) ? "online" : "offline",
+      isOnline: isOnline(therapist._id),
     }));
 
     res.json(therapistsWithStatus);
@@ -124,9 +134,9 @@ app.get("/api/user/profile", auth, async (req, res) => {
     res.json({
       _id: user._id,
       id: user._id, // Include both _id and id for compatibility
-      name: user.name,
       firstName: user.firstName,
       lastName: user.lastName,
+      fullName: user.fullName,
       email: user.email,
       role: user.role,
       profilePicture: user.profilePicture || "",
@@ -278,37 +288,22 @@ io.on("connection", (socket) => {
     console.log(`✅ ${userType} registered: ${userName} (${socket.id})`);
     console.log("Total connected users:", connectedUsers.size);
 
-    // Broadcast therapist availability to all users
-    if (userType === "therapist") {
-      io.emit("therapist-availability-update", getTherapistAvailability());
-    }
+    // Broadcast therapist availability to ALL users (both existing and new)
+    const therapistAvailability = getTherapistAvailability();
+    io.emit("therapist-availability-update", therapistAvailability);
+    console.log("Broadcast therapist availability:", therapistAvailability);
 
     console.log("=== REGISTER COMPLETE ===");
-  });
-
-  // Handle chat room joining
-  socket.on("join-chat", (data) => {
-    const { room, userId, therapistId } = data;
-    const user = connectedUsers.get(socket.id);
-
-    if (user && room) {
-      socket.join(room);
-      console.log(
-        `${user.userName} (${user.userType}) joined chat room: ${room}`
-      );
-
-      // Notify the room that someone joined
-      socket.to(room).emit("user-joined-chat", {
-        userId: user.userId,
-        userName: user.userName,
-        userType: user.userType,
-      });
-    }
   });
 
   // Therapist availability toggle
   socket.on("toggle-therapist-availability", (isAvailable) => {
     const user = connectedUsers.get(socket.id);
+    console.log("=== TOGGLE THERAPIST AVAILABILITY ===");
+    console.log("Socket ID:", socket.id);
+    console.log("Is Available:", isAvailable);
+    console.log("User:", user);
+
     if (user && user.userType === "therapist") {
       user.isAvailable = isAvailable;
       const therapist = therapistUsers.get(socket.id);
@@ -317,14 +312,26 @@ io.on("connection", (socket) => {
       }
 
       console.log(
-        `Therapist ${user.userName} is now ${
+        `✅ Therapist ${user.userName} is now ${
           isAvailable ? "available" : "unavailable"
         }`
       );
+      console.log(
+        "Current therapists:",
+        Array.from(therapistUsers.values()).map((t) => ({
+          name: t.userName,
+          available: t.isAvailable,
+        }))
+      );
 
       // Broadcast to all users
-      io.emit("therapist-availability-update", getTherapistAvailability());
+      const availability = getTherapistAvailability();
+      console.log("Broadcasting availability:", availability);
+      io.emit("therapist-availability-update", availability);
+    } else {
+      console.log("❌ User not found or not a therapist");
     }
+    console.log("=== END TOGGLE ===");
   });
 
   // Call request from user to therapist
@@ -421,53 +428,52 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Chat functionality
+  // Chat functionality - Join chat room with consistent room naming
   socket.on("join-chat", async (data) => {
     try {
       const { therapistId, userId, currentUserId } = data;
       const user = connectedUsers.get(socket.id);
 
-      if (user && therapistId && userId) {
-        // Create consistent room naming: always user_therapist format
-        const chatRoom = `chat_${userId}_${therapistId}`;
-        socket.join(chatRoom);
+      console.log("=== JOIN-CHAT EVENT ===");
+      console.log("User:", user);
+      console.log("Data:", { therapistId, userId, currentUserId });
 
-        console.log(
-          `${user.userName} (${user.userType}) joined chat room: ${chatRoom}`
-        );
-
-        // Notify the room that someone joined (but not the joiner themselves)
-        socket.to(chatRoom).emit("user-joined-chat", {
-          userId: user.userId,
-          userName: user.userName,
-          userType: user.userType,
-          room: chatRoom,
-        });
-
-        // Send room confirmation to the user who joined
-        socket.emit("chat-room-joined", {
-          room: chatRoom,
-          message: "Successfully joined chat room",
-        });
+      if (!user) {
+        console.error("User not found in connectedUsers");
+        return;
       }
+
+      // Create consistent room naming: always sorted IDs
+      const roomId1 = (therapistId || user.userId).toString();
+      const roomId2 = (userId || user.userId).toString();
+      const sortedIds = [roomId1, roomId2].sort();
+      const chatRoom = `chat_${sortedIds[0]}_${sortedIds[1]}`;
+
+      socket.join(chatRoom);
+      console.log(`✅ ${user.userName} (${user.userType}) joined room: ${chatRoom}`);
+
+      // Notify others in the room
+      socket.to(chatRoom).emit("user-joined-chat", {
+        userId: user.userId,
+        userName: user.userName,
+        userType: user.userType,
+        room: chatRoom,
+      });
+
+      // Confirm to joiner
+      socket.emit("chat-room-joined", {
+        room: chatRoom,
+        message: "Successfully joined chat room",
+      });
+
+      console.log("=== JOIN-CHAT COMPLETE ===");
     } catch (error) {
       console.error("Error joining chat room:", error);
       socket.emit("chat-error", { message: "Failed to join chat room" });
     }
   });
 
-  socket.on("register-therapist", (data) => {
-    const { therapistId, therapistName } = data;
-    // Store therapist information for this socket
-    connectedUsers.set(socket.id, {
-      userId: therapistId,
-      userName: therapistName,
-      userType: "therapist",
-      socketId: socket.id,
-    });
-    console.log(`Therapist ${therapistName} registered with ID ${therapistId}`);
-  });
-
+  // send-message event handler - users and therapists send messages
   socket.on("send-message", async (data) => {
     try {
       console.log("=== RECEIVED send-message EVENT ===");
@@ -501,18 +507,21 @@ io.on("connection", (socket) => {
         return;
       }
 
-      // Determine recipient ID and chat room based on sender type
-      let recipientId, chatRoom;
+      // Determine recipient ID and use consistent room naming (sorted IDs)
+      let recipientId;
 
       if (user.userType === "therapist") {
         recipientId = to || userId;
-        chatRoom = `chat_${recipientId}_${user.userId}`;
         console.log("→ Therapist sending message");
       } else {
         recipientId = to || therapistId;
-        chatRoom = `chat_${user.userId}_${recipientId}`;
         console.log("→ User sending message");
       }
+
+      const roomId1 = user.userId.toString();
+      const roomId2 = recipientId.toString();
+      const sortedIds = [roomId1, roomId2].sort();
+      const chatRoom = `chat_${sortedIds[0]}_${sortedIds[1]}`;
 
       console.log("Recipient ID:", recipientId);
       console.log("Chat room:", chatRoom);
@@ -585,14 +594,11 @@ io.on("connection", (socket) => {
     const user = connectedUsers.get(socket.id);
 
     if (user) {
-      let chatRoom;
-      if (user.userType === "therapist") {
-        const recipientId = to || userId;
-        chatRoom = `chat_${recipientId}_${user.userId}`;
-      } else {
-        const recipientId = to || therapistId;
-        chatRoom = `chat_${user.userId}_${recipientId}`;
-      }
+      const recipientId = to || (user.userType === "therapist" ? userId : therapistId);
+      const roomId1 = user.userId.toString();
+      const roomId2 = recipientId.toString();
+      const sortedIds = [roomId1, roomId2].sort();
+      const chatRoom = `chat_${sortedIds[0]}_${sortedIds[1]}`;
 
       socket.to(chatRoom).emit("typing", {
         from: user.userId,
@@ -607,14 +613,11 @@ io.on("connection", (socket) => {
     const user = connectedUsers.get(socket.id);
 
     if (user) {
-      let chatRoom;
-      if (user.userType === "therapist") {
-        const recipientId = to || userId;
-        chatRoom = `chat_${recipientId}_${user.userId}`;
-      } else {
-        const recipientId = to || therapistId;
-        chatRoom = `chat_${user.userId}_${recipientId}`;
-      }
+      const recipientId = to || (user.userType === "therapist" ? userId : therapistId);
+      const roomId1 = user.userId.toString();
+      const roomId2 = recipientId.toString();
+      const sortedIds = [roomId1, roomId2].sort();
+      const chatRoom = `chat_${sortedIds[0]}_${sortedIds[1]}`;
 
       socket.to(chatRoom).emit("stop-typing", {
         from: user.userId,
@@ -681,21 +684,34 @@ io.on("connection", (socket) => {
 // Helper functions
 function getTherapistAvailability() {
   const availableTherapists = Array.from(therapistUsers.values()).filter(
-    (therapist) => therapist.isAvailable
+    (therapist) => therapist.isAvailable === true
   );
   return {
     hasAvailableTherapists: availableTherapists.length > 0,
     availableCount: availableTherapists.length,
     totalTherapists: therapistUsers.size,
+    therapists: availableTherapists.map((t) => ({
+      socketId: t.socketId,
+      userName: t.userName,
+      userId: t.userId,
+    })),
   };
 }
 
 function findAvailableTherapist() {
-  for (const therapist of therapistUsers.values()) {
-    if (therapist.isAvailable) {
+  console.log("=== FINDING AVAILABLE THERAPIST ===");
+  console.log("Total therapists:", therapistUsers.size);
+
+  for (const [socketId, therapist] of therapistUsers.entries()) {
+    console.log(
+      `Therapist: ${therapist.userName}, Available: ${therapist.isAvailable}`
+    );
+    if (therapist.isAvailable === true) {
+      console.log(`✅ Found available therapist: ${therapist.userName}`);
       return therapist;
     }
   }
+  console.log("❌ No available therapist found");
   return null;
 }
 
@@ -722,16 +738,16 @@ const mongooseOptions = {
   maxPoolSize: 10, // Maximum number of connections in pool
   minPoolSize: 2, // Minimum number of connections in pool
   maxIdleTimeMS: 45000, // Close idle connections after 45s
-  
+
   // Retry settings
   retryWrites: true,
   retryReads: true,
-  
+
   // Connection timeout
   serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
   connectTimeoutMS: 10000,
-  
+
   // Application name for monitoring
   appName: "MentalHealthApp",
 };
@@ -758,16 +774,20 @@ async function connectToDatabase() {
   return new Promise((resolve, reject) => {
     async function attemptConnection(attempt = 0) {
       try {
-        console.log(`\n📡 Connection attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}...`);
-        
+        console.log(
+          `\n📡 Connection attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}...`
+        );
+
         await mongoose.connect(MONGO_URI, mongooseOptions);
-        
+
         healthcheck.updateMongoStatus(true);
         console.log("✅ MongoDB connected successfully");
-        
+
         // Setup connection event handlers
         mongoose.connection.on("disconnected", () => {
-          console.warn("⚠️  MongoDB connection lost. Attempting to reconnect...");
+          console.warn(
+            "⚠️  MongoDB connection lost. Attempting to reconnect..."
+          );
           healthcheck.updateMongoStatus(false);
         });
 
@@ -784,13 +804,14 @@ async function connectToDatabase() {
         resolve();
       } catch (error) {
         connectionAttempts++;
-        console.error(`❌ Connection attempt ${attempt + 1} failed:`, error.message);
+        console.error(
+          `❌ Connection attempt ${attempt + 1} failed:`,
+          error.message
+        );
 
         if (attempt < MAX_RETRY_ATTEMPTS - 1) {
           const delay = getRetryDelay(attempt);
-          console.log(
-            `⏳ Retrying in ${Math.round(delay / 1000)} seconds...`
-          );
+          console.log(`⏳ Retrying in ${Math.round(delay / 1000)} seconds...`);
           setTimeout(() => attemptConnection(attempt + 1), delay);
         } else {
           console.error(

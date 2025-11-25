@@ -215,6 +215,68 @@ class ChatManager {
         this.handleStopTyping();
       });
     }
+
+    // Event delegation for therapist cards
+    const therapistsList = document.getElementById("therapistsList");
+    if (therapistsList) {
+      therapistsList.addEventListener("click", (e) => {
+        const therapistCard = e.target.closest(".therapist-card");
+        if (therapistCard) {
+          const therapistId = therapistCard.dataset.therapistId;
+          const therapistName = therapistCard.dataset.therapistName;
+          if (therapistId && therapistName) {
+            this.selectTherapist(therapistId, therapistName);
+          }
+        }
+      });
+
+      // Also handle keyboard navigation
+      therapistsList.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          const therapistCard = e.target.closest(".therapist-card");
+          if (therapistCard) {
+            e.preventDefault();
+            const therapistId = therapistCard.dataset.therapistId;
+            const therapistName = therapistCard.dataset.therapistName;
+            if (therapistId && therapistName) {
+              this.selectTherapist(therapistId, therapistName);
+            }
+          }
+        }
+      });
+    }
+
+    // Event delegation for user/conversation cards
+    const usersList = document.getElementById("usersList");
+    if (usersList) {
+      usersList.addEventListener("click", (e) => {
+        const userCard = e.target.closest(".user-card");
+        if (userCard) {
+          const userId = userCard.dataset.userId;
+          const userName = userCard.dataset.userName;
+          const conversationId = userCard.dataset.conversationId;
+          if (userId && userName) {
+            this.selectConversation(userId, userName, conversationId);
+          }
+        }
+      });
+
+      // Also handle keyboard navigation
+      usersList.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          const userCard = e.target.closest(".user-card");
+          if (userCard) {
+            e.preventDefault();
+            const userId = userCard.dataset.userId;
+            const userName = userCard.dataset.userName;
+            const conversationId = userCard.dataset.conversationId;
+            if (userId && userName) {
+              this.selectConversation(userId, userName, conversationId);
+            }
+          }
+        }
+      });
+    }
   }
 
   // Force refresh therapist data (for debugging)
@@ -325,9 +387,9 @@ class ChatManager {
       return `
         <div class="therapist-card" 
              data-therapist-id="${therapist._id}"
-             onclick="chatManager.selectTherapist('${
-               therapist._id
-             }', '${displayName}')">
+             data-therapist-name="${displayName.replace(/"/g, "&quot;")}"
+             role="button"
+             tabindex="0">
           <div class="therapist-avatar">
             ${
               therapist.profilePicture
@@ -411,13 +473,19 @@ class ChatManager {
     container.innerHTML = conversations
       .map(
         (conv) => `
-        <div class="therapist-card conversation-item ${
+        <div class="therapist-card conversation-item user-card ${
           conv.unreadCount > 0 ? "has-unread" : ""
         }" 
              data-user-id="${conv.userId}"
-             onclick="chatManager.selectConversation('${conv.userId}', '${
-          conv.name
-        }', '${conv.id}')">
+             data-user-name="${conv.name.replace(/"/g, "&quot;")}"
+             data-conversation-id="${conv.id}"
+             data-is-online="${conv.isOnline}"
+             data-profile-picture="${(conv.profilePicture || "").replace(
+               /"/g,
+               "&quot;"
+             )}"
+             role="button"
+             tabindex="0">
           <div class="therapist-avatar">
             ${
               conv.profilePicture
@@ -466,15 +534,35 @@ class ChatManager {
         type: "therapist",
       };
 
-      // Update UI
-      this.updateChatHeader(therapistName, false);
+      // Get therapist's online status and profile picture from therapist list
+      const therapistElement = document.querySelector(
+        `[data-therapist-id="${therapistId}"]`
+      );
+      let therapistIsOnline = false;
+      let therapistProfilePicture = null;
+
+      if (therapistElement) {
+        const statusBadge = therapistElement.querySelector(".therapist-status");
+        therapistIsOnline =
+          statusBadge?.classList.contains("status-online") || false;
+        const profileImg = therapistElement.querySelector("img");
+        therapistProfilePicture = profileImg?.src || null;
+      }
+
+      // Update UI with correct status and profile picture
+      this.updateChatHeader(
+        therapistName,
+        therapistIsOnline,
+        therapistProfilePicture
+      );
       this.enableChatInput();
 
-      // Join chat room
+      // Join chat room with correct parameters
+      const userId = this.currentUser._id || this.currentUser.id;
       const joinData = {
         therapistId: therapistId,
-        userId: this.currentUser._id || this.currentUser.id,
-        currentUserId: this.currentUser._id || this.currentUser.id,
+        userId: userId,
+        currentUserId: userId,
       };
 
       console.log("→ Emitting 'join-chat' with data:", joinData);
@@ -510,15 +598,26 @@ class ChatManager {
         conversationId: conversationId,
       };
 
-      // Update UI
-      this.updateChatHeader(userName, false);
+      // Get user's online status and profile picture from data attributes
+      const userElement = document.querySelector(`[data-user-id="${userId}"]`);
+      let userIsOnline = false;
+      let userProfilePicture = null;
+
+      if (userElement) {
+        userIsOnline = userElement.dataset.isOnline === "true";
+        userProfilePicture = userElement.dataset.profilePicture || null;
+      }
+
+      // Update UI with correct status and profile picture
+      this.updateChatHeader(userName, userIsOnline, userProfilePicture);
       this.enableChatInput();
 
-      // Join chat room
+      // Join chat room with correct parameters
+      const therapistId = this.currentUser._id || this.currentUser.id;
       const joinData = {
-        therapistId: this.currentUser._id || this.currentUser.id,
+        therapistId: therapistId,
         userId: userId,
-        currentUserId: this.currentUser._id || this.currentUser.id,
+        currentUserId: therapistId,
       };
 
       console.log("→ Emitting 'join-chat' with data:", joinData);
@@ -737,20 +836,19 @@ class ChatManager {
     console.log("Current user:", this.currentUser);
     console.log("Socket connected:", this.socket.connected);
 
-    // Prepare message data
+    // Prepare message data - use consistent format
     const messageData = {
       message: message,
       timestamp: new Date().toISOString(),
+      to: this.currentChat.id,
     };
 
-    // Set recipient based on user role
+    // Add role-specific IDs
     if (this.currentUser.role === "therapist") {
       messageData.userId = this.currentChat.id;
-      messageData.to = this.currentChat.id;
       console.log("→ Therapist sending to user:", this.currentChat.id);
     } else {
       messageData.therapistId = this.currentChat.id;
-      messageData.to = this.currentChat.id;
       console.log("→ User sending to therapist:", this.currentChat.id);
     }
 
@@ -861,7 +959,7 @@ class ChatManager {
     }
   }
 
-  updateChatHeader(name, isOnline = false) {
+  updateChatHeader(name, isOnline = false, profilePicture = null) {
     // Update main header
     const chatMainHeader = document.getElementById("chatMainHeader");
     const chatUserName = document.getElementById("chatUserName");
@@ -884,7 +982,18 @@ class ChatManager {
     }
 
     if (chatUserAvatar) {
-      chatUserAvatar.innerHTML = `<span>${this.getInitials(name)}</span>`;
+      if (profilePicture) {
+        // Display profile picture if available
+        chatUserAvatar.innerHTML = `<img src="${profilePicture}" 
+                                        alt="${name}" 
+                                        style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
+                                        onerror="this.parentElement.innerHTML='<span>${this.getInitials(
+                                          name
+                                        )}</span>'" />`;
+      } else {
+        // Fallback to initials
+        chatUserAvatar.innerHTML = `<span>${this.getInitials(name)}</span>`;
+      }
     }
 
     // Update status text
@@ -1052,6 +1161,378 @@ class ChatManager {
     }
 
     console.log("Force refresh complete");
+  }
+
+  // Chat Options Methods
+  toggleChatOptions() {
+    const menu = document.getElementById("chatOptionsMenu");
+    if (menu) {
+      menu.style.display = menu.style.display === "none" ? "block" : "none";
+    }
+  }
+
+  closeChatOptions() {
+    const menu = document.getElementById("chatOptionsMenu");
+    if (menu) {
+      menu.style.display = "none";
+    }
+  }
+
+  async viewUserProfile() {
+    if (!this.currentChat) {
+      this.showError("Please select a conversation first");
+      return;
+    }
+    console.log("Opening profile for:", this.currentChat.id);
+    this.closeChatOptions();
+    
+    try {
+      const response = await fetch(`/api/profile/${this.currentChat.id}`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) throw new Error("Failed to load profile");
+
+      const userData = await response.json();
+      this.showProfileModal(userData);
+    } catch (error) {
+      console.error("Error loading profile:", error);
+      this.showError("Failed to load user profile");
+    }
+  }
+
+  async viewTherapistProfile() {
+    if (!this.currentChat) {
+      this.showError("Please select a therapist first");
+      return;
+    }
+    console.log("Opening therapist profile for:", this.currentChat.id);
+    this.closeChatOptions();
+    
+    try {
+      const response = await fetch(`/api/profile/${this.currentChat.id}`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) throw new Error("Failed to load profile");
+
+      const therapistData = await response.json();
+      this.showProfileModal(therapistData);
+    } catch (error) {
+      console.error("Error loading profile:", error);
+      this.showError("Failed to load therapist profile");
+    }
+  }
+
+  showProfileModal(userData) {
+    const modalHTML = `
+      <div class="profile-modal-overlay" onclick="this.remove()">
+        <div class="profile-modal" onclick="event.stopPropagation()">
+          <button class="modal-close" onclick="this.closest('.profile-modal-overlay').remove()">
+            <i class="fa-solid fa-times"></i>
+          </button>
+          
+          <div class="profile-modal-header">
+            <div class="profile-modal-avatar">
+              ${userData.profilePicture 
+                ? `<img src="${userData.profilePicture}" alt="${userData.firstName} ${userData.lastName}" onerror="this.src='../assets/profile-pictures/default-avatar.svg'">`
+                : `<span>${this.getInitials(`${userData.firstName} ${userData.lastName}`)}</span>`
+              }
+            </div>
+            <div class="profile-modal-title">
+              <h2>${userData.firstName} ${userData.lastName}</h2>
+              <p class="profile-role">${userData.role === 'therapist' ? '👨‍⚕️ Mental Health Professional' : '👤 User'}</p>
+            </div>
+          </div>
+
+          <div class="profile-modal-content">
+            <!-- Basic Information -->
+            <div class="profile-section">
+              <h3>Personal Information</h3>
+              <div class="profile-item">
+                <span class="label"><i class="fa-solid fa-user"></i> First Name:</span>
+                <span class="value">${userData.firstName || 'N/A'}</span>
+              </div>
+              <div class="profile-item">
+                <span class="label"><i class="fa-solid fa-user"></i> Last Name:</span>
+                <span class="value">${userData.lastName || 'N/A'}</span>
+              </div>
+              <div class="profile-item">
+                <span class="label"><i class="fa-solid fa-envelope"></i> Email:</span>
+                <span class="value">${userData.email || 'N/A'}</span>
+              </div>
+              <div class="profile-item">
+                <span class="label"><i class="fa-solid fa-phone"></i> Phone:</span>
+                <span class="value">${userData.phone || 'N/A'}</span>
+              </div>
+              ${userData.dateOfBirth ? `
+                <div class="profile-item">
+                  <span class="label"><i class="fa-solid fa-calendar"></i> Date of Birth:</span>
+                  <span class="value">${userData.dateOfBirth || 'N/A'}</span>
+                </div>
+              ` : ''}
+              ${userData.gender ? `
+                <div class="profile-item">
+                  <span class="label"><i class="fa-solid fa-venus-mars"></i> Gender:</span>
+                  <span class="value">${userData.gender || 'N/A'}</span>
+                </div>
+              ` : ''}
+              ${userData.location ? `
+                <div class="profile-item">
+                  <span class="label"><i class="fa-solid fa-location-dot"></i> Location:</span>
+                  <span class="value">${userData.location || 'N/A'}</span>
+                </div>
+              ` : ''}
+              ${userData.bio ? `
+                <div class="profile-item full-width">
+                  <span class="label"><i class="fa-solid fa-info-circle"></i> About Me:</span>
+                  <span class="value bio-text">${userData.bio}</span>
+                </div>
+              ` : ''}
+            </div>
+
+            ${userData.role !== 'therapist' ? `
+              <!-- Mental Health Information (for users) -->
+              <div class="profile-section">
+                <h3>Mental Health Information</h3>
+                ${userData.preferredLanguage ? `
+                  <div class="profile-item">
+                    <span class="label"><i class="fa-solid fa-language"></i> Preferred Language:</span>
+                    <span class="value">${userData.preferredLanguage}</span>
+                  </div>
+                ` : ''}
+                ${userData.mentalHealthConcerns && userData.mentalHealthConcerns.length > 0 ? `
+                  <div class="profile-item full-width">
+                    <span class="label"><i class="fa-solid fa-brain"></i> Primary Mental Health Concerns:</span>
+                    <div class="profile-tags">
+                      ${userData.mentalHealthConcerns.map(concern => `<span class="tag">${concern}</span>`).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+                ${userData.mentalHealthGoals ? `
+                  <div class="profile-item full-width">
+                    <span class="label"><i class="fa-solid fa-target"></i> Mental Health Goals:</span>
+                    <span class="value bio-text">${userData.mentalHealthGoals}</span>
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
+
+            ${userData.role === 'therapist' ? `
+              <!-- Professional Information -->
+              <div class="profile-section">
+                <h3>Professional Information</h3>
+                <div class="profile-item">
+                  <span class="label"><i class="fa-solid fa-briefcase"></i> Specialization:</span>
+                  <span class="value">${userData.specialization || 'N/A'}</span>
+                </div>
+                <div class="profile-item">
+                  <span class="label"><i class="fa-solid fa-award"></i> Experience:</span>
+                  <span class="value">${userData.yearsExperience || 'N/A'} years</span>
+                </div>
+                <div class="profile-item">
+                  <span class="label"><i class="fa-solid fa-building"></i> Institution:</span>
+                  <span class="value">${userData.institution || 'N/A'}</span>
+                </div>
+                ${userData.bio ? `
+                  <div class="profile-item full-width">
+                    <span class="label"><i class="fa-solid fa-info-circle"></i> Bio:</span>
+                    <span class="value bio-text">${userData.bio}</span>
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Professional Credentials -->
+              <div class="profile-section">
+                <h3>Professional Credentials</h3>
+                ${userData.education ? `
+                  <div class="profile-item">
+                    <span class="label"><i class="fa-solid fa-graduation-cap"></i> Education:</span>
+                    <span class="value">${userData.education}</span>
+                  </div>
+                ` : ''}
+                ${userData.certifications ? `
+                  <div class="profile-item">
+                    <span class="label"><i class="fa-solid fa-certificate"></i> Certifications:</span>
+                    <span class="value">${userData.certifications}</span>
+                  </div>
+                ` : ''}
+                ${userData.licenseNumber ? `
+                  <div class="profile-item">
+                    <span class="label"><i class="fa-solid fa-id-card"></i> License Number:</span>
+                    <span class="value">${userData.licenseNumber}</span>
+                  </div>
+                ` : ''}
+              </div>
+
+              ${userData.stats ? `
+                <div class="profile-section">
+                  <h3>Statistics</h3>
+                  <div class="profile-stats-grid">
+                    <div class="stat">
+                      <span class="stat-number">${userData.stats.patientsHelped || 0}</span>
+                      <span class="stat-label">Patients Helped</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-number">${userData.stats.hoursThisMonth || 0}h</span>
+                      <span class="stat-label">Hours This Month</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-number">${userData.stats.rating || '0.0'}</span>
+                      <span class="stat-label">Average Rating</span>
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
+
+              ${userData.languagesSpoken && userData.languagesSpoken.length > 0 ? `
+                <div class="profile-section">
+                  <h3>Languages</h3>
+                  <div class="profile-tags">
+                    ${userData.languagesSpoken.map(lang => `<span class="tag">${lang}</span>`).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
+              ${userData.areasOfExpertise && userData.areasOfExpertise.length > 0 ? `
+                <div class="profile-section">
+                  <h3>Areas of Expertise</h3>
+                  <div class="profile-tags">
+                    ${userData.areasOfExpertise.map(area => `<span class="tag expertise-tag">${area}</span>`).join('')}
+                  </div>
+                </div>
+              ` : ''}
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const container = document.createElement('div');
+    container.innerHTML = modalHTML;
+    document.body.appendChild(container.firstElementChild);
+  }
+
+  async clearChatHistory() {
+    if (!this.currentChat) {
+      this.showError("Please select a conversation first");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to clear this chat history? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/chat/clear/${this.currentChat.id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (response.ok) {
+        // Clear messages from UI
+        const chatMessages = document.getElementById("chatMessages");
+        if (chatMessages) {
+          chatMessages.innerHTML = `
+            <div class="chat-empty-state">
+              <div class="empty-state-icon">
+                <i class="fa-solid fa-comments"></i>
+              </div>
+              <h3>Chat History Cleared</h3>
+              <p>This conversation history has been cleared.</p>
+            </div>
+          `;
+        }
+        this.showSuccess("Chat history cleared successfully");
+      } else {
+        this.showError("Failed to clear chat history");
+      }
+    } catch (error) {
+      console.error("Error clearing chat history:", error);
+      this.showError("Error clearing chat history");
+    }
+
+    this.closeChatOptions();
+  }
+
+  async blockUser() {
+    if (!this.currentChat) {
+      this.showError("Please select a user first");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to block ${this.currentChat.name}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${this.currentChat.id}/block`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+
+      if (response.ok) {
+        this.showSuccess(`${this.currentChat.name} has been blocked`);
+        // Remove from conversation list
+        const element = document.querySelector(`[data-user-id="${this.currentChat.id}"]`);
+        if (element) {
+          element.remove();
+        }
+        // Clear chat
+        document.getElementById("chatMessages").innerHTML = `
+          <div class="chat-empty-state">
+            <div class="empty-state-icon">
+              <i class="fa-solid fa-ban"></i>
+            </div>
+            <h3>User Blocked</h3>
+            <p>You have blocked this user.</p>
+          </div>
+        `;
+        this.currentChat = null;
+      } else {
+        this.showError("Failed to block user");
+      }
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      this.showError("Error blocking user");
+    }
+
+    this.closeChatOptions();
+  }
+
+  async reportTherapist() {
+    if (!this.currentChat) {
+      this.showError("Please select a therapist first");
+      return;
+    }
+
+    const reason = prompt(`Report ${this.currentChat.name}?\n\nPlease enter the reason:`, "");
+    if (!reason) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          reportedUserId: this.currentChat.id,
+          reason: reason,
+          reportType: "therapist",
+        }),
+      });
+
+      if (response.ok) {
+        this.showSuccess("Report submitted successfully. Thank you for helping keep our platform safe.");
+      } else {
+        this.showError("Failed to submit report");
+      }
+    } catch (error) {
+      console.error("Error submitting report:", error);
+      this.showError("Error submitting report");
+    }
+
+    this.closeChatOptions();
   }
 }
 

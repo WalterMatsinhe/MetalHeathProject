@@ -31,11 +31,6 @@ const UserSchema = new mongoose.Schema(
           "Last name can only contain letters, spaces, hyphens, apostrophes, and periods",
       },
     },
-    // Computed full name for backward compatibility
-    name: {
-      type: String,
-      required: false,
-    },
     email: {
       type: String,
       required: true,
@@ -263,11 +258,6 @@ const UserSchema = new mongoose.Schema(
 
 // Pre-save middleware
 UserSchema.pre("save", function (next) {
-  // Generate full name from firstName and lastName
-  if (this.firstName && this.lastName) {
-    this.name = `${this.firstName} ${this.lastName}`.trim();
-  }
-
   // Calculate years on platform
   if (this.isNew) {
     this.stats.yearsOnPlatform = 0;
@@ -279,5 +269,14 @@ UserSchema.pre("save", function (next) {
   }
   next();
 });
+
+// Virtual field for computed full name
+UserSchema.virtual("fullName").get(function () {
+  return `${this.firstName} ${this.lastName}`.trim();
+});
+
+// Ensure virtuals are included in JSON
+UserSchema.set("toJSON", { virtuals: true });
+UserSchema.set("toObject", { virtuals: true });
 
 module.exports = mongoose.model("User", UserSchema);

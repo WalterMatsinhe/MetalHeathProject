@@ -14,6 +14,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initialize admin profile picture upload
   initializeAdminProfilePictureUpload();
+
+  // Load admin profile from database
+  setTimeout(() => {
+    loadAdminProfile();
+  }, 100);
 });
 
 // Check if user has admin access
@@ -34,12 +39,7 @@ function checkAdminAccess() {
     sidebarUserName.textContent = `${userData.firstName} ${userData.lastName}`;
   }
 
-  // Update sidebar profile picture
-  const sidebarProfileImage = document.getElementById("sidebarProfileImage");
-  if (sidebarProfileImage && userData.profilePicture) {
-    sidebarProfileImage.src = userData.profilePicture;
-  }
-
+  // Sidebar image will be updated when loadAdminProfile() fetches fresh data from database
   return true;
 }
 
@@ -1131,7 +1131,31 @@ async function loadAdminProfile() {
   }
 
   try {
-    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    // Fetch fresh data from database instead of using only localStorage
+    let userData = null;
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch("/api/profile/", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        userData = await response.json();
+        // Update localStorage with fresh data from database
+        localStorage.setItem("userData", JSON.stringify(userData));
+        console.log("Profile loaded from database", userData);
+      } else {
+        throw new Error("Failed to fetch from API");
+      }
+    } catch (error) {
+      console.warn("Could not fetch from API, using localStorage:", error);
+      userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    }
 
     container.innerHTML = `
       <div class="profile-card-admin">
@@ -1326,6 +1350,18 @@ async function loadAdminProfile() {
         </div>
       </div>
     `;
+
+    // Update sidebar with fresh profile data
+    const sidebarUserName = document.getElementById("sidebarUserName");
+    if (sidebarUserName && userData.firstName) {
+      sidebarUserName.textContent = `${userData.firstName} ${userData.lastName}`;
+    }
+
+    const sidebarProfileImage = document.getElementById("sidebarProfileImage");
+    if (sidebarProfileImage && userData.profilePicture) {
+      sidebarProfileImage.src = userData.profilePicture;
+      console.log("Sidebar image updated:", userData.profilePicture);
+    }
   } catch (error) {
     console.error("Error loading admin profile:", error);
     container.innerHTML = `
@@ -1396,7 +1432,7 @@ async function uploadAdminProfilePicture(file) {
     const formData = new FormData();
     formData.append("profilePicture", file);
 
-    const response = await fetch("http://localhost:5000/api/profile/picture", {
+    const response = await fetch("/api/profile/picture", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

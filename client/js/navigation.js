@@ -19,7 +19,6 @@ function showSection(sectionId) {
   // Hide all sections
   const sections = document.querySelectorAll(".content-section");
   sections.forEach((sec) => {
-    sec.classList.remove("content-section-hidden");
     sec.classList.add("content-section-hidden");
   });
 
@@ -61,21 +60,22 @@ function showSection(sectionId) {
       initializeMoodTracking();
     }
   }
+
+  // Special handling for profile section - reload stats
+  if (sectionId === "profile") {
+    if (typeof loadUserProfileData === "function") {
+      loadUserProfileData();
+    }
+  }
 }
 
 // Initialize sidebar active state on page load
 document.addEventListener("DOMContentLoaded", function () {
-  // Set default active section (awareness) - only on dashboard pages
-  const defaultSection = "awareness";
+  const defaultSection = window.location.pathname.includes("userDashboard")
+    ? "dashboard"
+    : "awareness";
   const defaultLink = document.querySelector(`a[href="#${defaultSection}"]`);
   if (defaultLink) {
     defaultLink.parentElement.classList.add("active");
-  }
-
-  // Initialize video call functionality if on dashboard pages
-  if (window.location.pathname.includes("Dashboard.html")) {
-    if (typeof initializeVideoCall === "function") {
-      initializeVideoCall();
-    }
   }
 });

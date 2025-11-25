@@ -111,7 +111,9 @@ router.put("/applications/:id/approve", auth, isAdmin, async (req, res) => {
       message: "Therapist application approved successfully",
       therapist: {
         id: therapist._id,
-        name: therapist.name,
+        firstName: therapist.firstName,
+        lastName: therapist.lastName,
+        fullName: therapist.fullName,
         email: therapist.email,
         registrationStatus: therapist.registrationStatus,
       },
@@ -157,7 +159,9 @@ router.put("/applications/:id/reject", auth, isAdmin, async (req, res) => {
       message: "Therapist application rejected",
       therapist: {
         id: therapist._id,
-        name: therapist.name,
+        firstName: therapist.firstName,
+        lastName: therapist.lastName,
+        fullName: therapist.fullName,
         email: therapist.email,
         registrationStatus: therapist.registrationStatus,
         rejectionReason: therapist.rejectionReason,

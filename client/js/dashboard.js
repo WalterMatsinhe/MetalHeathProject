@@ -332,67 +332,8 @@ async function loadRecentActivity() {
   }
 }
 
-// Helper function to get time ago
-function getTimeAgo(date) {
-  const seconds = Math.floor((new Date() - date) / 1000);
-
-  if (seconds < 60) return "Just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
-  return date.toLocaleDateString();
-}
-
-// Helper function to get mood emoji
-function getMoodEmoji(level) {
-  const emojis = {
-    1: "😭",
-    2: "😢",
-    3: "😐",
-    4: "😊",
-    5: "😄",
-  };
-  return emojis[level] || "😊";
-}
-
-// Update user stats display in multiple places
-function updateUserStats(stats) {
-  if (!stats) return;
-
-  // Store stats in localStorage
-  localStorage.setItem("userStats", JSON.stringify(stats));
-
-  // Update user dashboard stats display
-  if (window.location.pathname.includes("userDashboard")) {
-    const statElements = {
-      daysActive: document.querySelector(
-        ".stat-card:nth-child(1) .stat-number"
-      ),
-      sessionsCompleted: document.querySelector(
-        ".stat-card:nth-child(2) .stat-number"
-      ),
-      moodEntries: document.querySelector(
-        ".stat-card:nth-child(3) .stat-number"
-      ),
-      goalsAchieved: document.querySelector(
-        ".stat-card:nth-child(4) .stat-number"
-      ),
-    };
-
-    Object.keys(statElements).forEach((key) => {
-      if (statElements[key] && stats[key] !== undefined) {
-        statElements[key].textContent = stats[key];
-      }
-    });
-
-    // Also update dashboard specific elements
-    loadDashboardStats();
-  }
-}
-
 // Override the default section to show dashboard first
 document.addEventListener("DOMContentLoaded", function () {
-  // Set default active section to dashboard instead of awareness for user dashboard
   if (window.location.pathname.includes("userDashboard")) {
     const defaultSection = "dashboard";
     const defaultLink = document.querySelector(`a[href="#${defaultSection}"]`);
@@ -400,18 +341,6 @@ document.addEventListener("DOMContentLoaded", function () {
       defaultLink.parentElement.classList.add("active");
       showSection(defaultSection);
     }
-  } else {
-    const defaultSection = "awareness";
-    const defaultLink = document.querySelector(`a[href="#${defaultSection}"]`);
-    if (defaultLink) {
-      defaultLink.parentElement.classList.add("active");
-    }
-  }
-
-  // Initialize video call functionality if on dashboard pages
-  if (window.location.pathname.includes("Dashboard.html")) {
-    if (typeof initializeVideoCall === "function") {
-      initializeVideoCall();
-    }
+    initializeDashboard();
   }
 });

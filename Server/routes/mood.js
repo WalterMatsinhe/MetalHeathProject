@@ -453,6 +453,22 @@ router.get("/insights", auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/mood/count
+// @desc    Get total mood entries count for the user
+// @access  Private
+router.get("/count", auth, async (req, res) => {
+  try {
+    const count = await Mood.countDocuments({ user: req.user.id });
+    res.json({ count });
+  } catch (error) {
+    console.error("Error counting mood entries:", error);
+    res.status(500).json({
+      message: "Error counting mood entries",
+      error: error.message,
+    });
+  }
+});
+
 // @route   GET /api/mood/today/check
 // @desc    Check if user has completed today's check-in
 // @access  Private

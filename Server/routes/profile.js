@@ -44,6 +44,20 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+// Get user profile by ID (for viewing other users' profiles)
+router.get("/:userId", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error("Get user profile error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Update user profile
 router.put("/", auth, async (req, res) => {
   try {
