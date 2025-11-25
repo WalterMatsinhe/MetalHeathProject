@@ -14,7 +14,7 @@ function initializeGoalsAndReminders() {
 // Load daily goals
 async function loadDailyGoals() {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) return;
 
     const response = await fetch(
@@ -91,7 +91,7 @@ function displayDailyGoals(goals) {
 // Load upcoming reminders
 async function loadUpcomingReminders() {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) return;
 
     const response = await fetch(
@@ -161,7 +161,7 @@ function displayUpcomingReminders(reminders) {
 // Toggle goal completion with automatic progress tracking
 async function toggleGoalComplete(goalId, isCompleted) {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) return;
 
     if (isCompleted) {
@@ -219,7 +219,7 @@ async function toggleGoalComplete(goalId, isCompleted) {
 // Complete a reminder with automatic progress tracking
 async function completeReminder(reminderId) {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) return;
 
     const response = await fetch(
@@ -425,7 +425,7 @@ async function handleAddGoal(e) {
   };
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch("http://localhost:5000/api/goals", {
       method: "POST",
       headers: {
@@ -471,7 +471,7 @@ async function handleAddReminder(e) {
   };
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch("http://localhost:5000/api/reminders", {
       method: "POST",
       headers: {
@@ -564,15 +564,15 @@ function getReminderIcon(type) {
 // Automatic progress tracking
 async function trackProgressAutomatically(progressData) {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) return;
 
     // Save progress entry to localStorage for stats
     const progressLog = JSON.parse(
-      localStorage.getItem("progressLog") || "[]"
+      sessionStorage.getItem("progressLog") || "[]"
     );
     progressLog.push(progressData);
-    localStorage.setItem("progressLog", JSON.stringify(progressLog));
+    sessionStorage.setItem("progressLog", JSON.stringify(progressLog));
 
     // Update user stats based on progress type
     if (progressData.type === "goal_completed") {
@@ -614,7 +614,7 @@ async function trackProgressAutomatically(progressData) {
 // Get updated goal count
 async function getUpdatedGoalCount() {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch("http://localhost:5000/api/goals?status=completed", {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -702,3 +702,4 @@ if (window.location.pathname.includes("userDashboard")) {
     initializeGoalsAndReminders();
   });
 }
+

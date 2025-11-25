@@ -243,3 +243,4 @@ if (document.readyState === "loading") {
  * ✅ Use Service Workers for offline support
  * ✅ GPU acceleration for animations
  */
+

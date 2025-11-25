@@ -1,4 +1,50 @@
 /* ============================================
+   ACCESSIBILITY - SKIP LINK
+   ============================================ */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  z-index: 9999;
+  text-decoration: none;
+  border-radius: 0 0 4px 0;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ============================================
+   ACCESSIBILITY - KEYBOARD FOCUS STATES
+   ============================================ */
+button:focus,
+a:focus {
+  outline: 3px solid #00bfff;
+  outline-offset: 2px;
+}
+
+/* Remove default blue outline for better custom styling */
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #00bfff;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  button:focus,
+  a:focus,
+  button:focus-visible,
+  a:focus-visible {
+    outline: 3px solid #000;
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================
    PERFORMANCE OPTIMIZATIONS
    ============================================ */
 

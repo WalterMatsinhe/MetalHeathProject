@@ -22,12 +22,34 @@ const isAdmin = (req, res, next) => {
 // Get all pending therapist applications
 router.get("/applications/pending", auth, isAdmin, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
     const pendingApplications = await User.find({
       role: "therapist",
       registrationStatus: "pending",
-    }).select("-password");
+    })
+      .select("-password")
+      .lean()
+      .sort({ registrationDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    res.json(pendingApplications);
+    const total = await User.countDocuments({
+      role: "therapist",
+      registrationStatus: "pending",
+    });
+
+    res.json({
+      data: pendingApplications,
+      pagination: {
+        currentPage: page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     console.error("Error fetching pending applications:", err);
     res.status(500).json({ message: err.message });
@@ -37,12 +59,34 @@ router.get("/applications/pending", auth, isAdmin, async (req, res) => {
 // Get all approved therapists
 router.get("/applications/approved", auth, isAdmin, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
     const approvedTherapists = await User.find({
       role: "therapist",
       registrationStatus: "approved",
-    }).select("-password");
+    })
+      .select("-password")
+      .lean()
+      .sort({ registrationDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    res.json(approvedTherapists);
+    const total = await User.countDocuments({
+      role: "therapist",
+      registrationStatus: "approved",
+    });
+
+    res.json({
+      data: approvedTherapists,
+      pagination: {
+        currentPage: page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     console.error("Error fetching approved therapists:", err);
     res.status(500).json({ message: err.message });
@@ -52,12 +96,34 @@ router.get("/applications/approved", auth, isAdmin, async (req, res) => {
 // Get all rejected applications
 router.get("/applications/rejected", auth, isAdmin, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
     const rejectedApplications = await User.find({
       role: "therapist",
       registrationStatus: "rejected",
-    }).select("-password");
+    })
+      .select("-password")
+      .lean()
+      .sort({ registrationDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    res.json(rejectedApplications);
+    const total = await User.countDocuments({
+      role: "therapist",
+      registrationStatus: "rejected",
+    });
+
+    res.json({
+      data: rejectedApplications,
+      pagination: {
+        currentPage: page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     console.error("Error fetching rejected applications:", err);
     res.status(500).json({ message: err.message });
@@ -67,7 +133,9 @@ router.get("/applications/rejected", auth, isAdmin, async (req, res) => {
 // Get single therapist application by ID
 router.get("/applications/:id", auth, isAdmin, async (req, res) => {
   try {
-    const application = await User.findById(req.params.id).select("-password");
+    const application = await User.findById(req.params.id)
+      .select("-password")
+      .lean();
 
     if (!application) {
       return res.status(404).json({ message: "Application not found" });
@@ -213,11 +281,28 @@ router.get("/statistics", auth, isAdmin, async (req, res) => {
 // Get all users
 router.get("/users", auth, isAdmin, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
     const users = await User.find({ role: "user" })
       .select("-password")
-      .sort({ createdAt: -1 });
+      .lean()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    res.json(users);
+    const total = await User.countDocuments({ role: "user" });
+
+    res.json({
+      data: users,
+      pagination: {
+        currentPage: page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     console.error("Error fetching users:", err);
     res.status(500).json({ message: err.message });

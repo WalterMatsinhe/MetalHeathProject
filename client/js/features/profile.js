@@ -58,7 +58,7 @@ class ProfileAPI {
 
   static async uploadProfileImage(file) {
     try {
-      const token = localStorage.getItem("authToken");
+      const token = sessionStorage.getItem("authToken");
       const formData = new FormData();
       formData.append("profilePicture", file);
 
@@ -154,9 +154,9 @@ async function handleImageUpload(event, imageElement) {
       updateSidebarProfile(serverImageUrl);
 
       // Update localStorage with the server URL
-      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      const userData = JSON.parse(sessionStorage.getItem("userData") || "{}");
       userData.profilePicture = serverImageUrl;
-      localStorage.setItem("userData", JSON.stringify(userData));
+      sessionStorage.setItem("userData", JSON.stringify(userData));
 
       // Force update sidebar profile
       setTimeout(() => {
@@ -215,6 +215,9 @@ async function handleUserProfileSubmit(event) {
           profileData.mentalHealthConcerns = [];
         }
         profileData.mentalHealthConcerns.push(value);
+      } else if (key === "goals") {
+        // Map goals field to mentalHealthGoals
+        profileData.mentalHealthGoals = value;
       } else if (
         key === "shareProgress" ||
         key === "emailNotifications" ||
@@ -243,8 +246,29 @@ async function handleUserProfileSubmit(event) {
 
     showNotification("Profile updated successfully!", "success");
 
-    // Update UI elements
-    updateProfileDisplay(result.user);
+    // Immediately update sidebar with new name
+    if (profileData.firstName || profileData.lastName) {
+      const fullName = `${profileData.firstName || ""} ${
+        profileData.lastName || ""
+      }`.trim();
+
+      // Get current profile picture for sidebar
+      const profileImage = document.getElementById("profileImage");
+      const imageSrc = profileImage ? profileImage.src : "";
+
+      updateSidebarProfile(imageSrc, fullName || "User");
+    }
+
+    // Update sessionStorage with new profile data
+    const currentUserData = StorageManager.get("userData", {});
+    const updatedUserData = {
+      ...currentUserData,
+      ...profileData,
+    };
+    StorageManager.set("userData", updatedUserData);
+
+    // Reload profile data from server to ensure consistency
+    await loadUserProfileData();
   } catch (error) {
     showNotification(error.message || "Failed to update profile", "error");
   }
@@ -287,8 +311,29 @@ async function handleTherapistProfileSubmit(event) {
 
     showNotification("Therapist profile updated successfully!", "success");
 
-    // Update UI elements
-    updateTherapistProfileDisplay(result.user);
+    // Immediately update sidebar with new name
+    if (profileData.firstName || profileData.lastName) {
+      const fullName = `${profileData.firstName || ""} ${
+        profileData.lastName || ""
+      }`.trim();
+
+      // Get current profile picture for sidebar
+      const profileImage = document.getElementById("therapistProfileImage");
+      const imageSrc = profileImage ? profileImage.src : "";
+
+      updateSidebarProfile(imageSrc, fullName || "Therapist");
+    }
+
+    // Update sessionStorage with new profile data
+    const currentUserData = StorageManager.get("userData", {});
+    const updatedUserData = {
+      ...currentUserData,
+      ...profileData,
+    };
+    StorageManager.set("userData", updatedUserData);
+
+    // Update UI elements by reloading profile data
+    await loadTherapistProfileData();
   } catch (error) {
     showNotification(
       error.message || "Failed to update therapist profile",
@@ -322,7 +367,7 @@ async function loadUserProfileData() {
     updateSidebarProfile(userData.profilePicture, fullName || "User");
 
     // Store user data in localStorage for persistence
-    localStorage.setItem("userData", JSON.stringify(userData));
+    sessionStorage.setItem("userData", JSON.stringify(userData));
     console.log("User data stored in localStorage");
 
     // Populate form if it exists
@@ -364,7 +409,7 @@ async function loadTherapistProfileData() {
     updateSidebarProfile(userData.profilePicture, fullName || "Therapist");
 
     // Store user data in localStorage for persistence
-    localStorage.setItem("userData", JSON.stringify(userData));
+    sessionStorage.setItem("userData", JSON.stringify(userData));
 
     // Populate form
     populateForm("therapistProfileForm", userData);
@@ -383,7 +428,10 @@ function populateForm(formId, data) {
 
   // Populate text inputs, selects, and textareas
   Object.keys(data).forEach((key) => {
-    const element = form.querySelector(`[name="${key}"]`);
+    // Map mentalHealthGoals to goals field
+    let fieldName = key === "mentalHealthGoals" ? "goals" : key;
+
+    const element = form.querySelector(`[name="${fieldName}"]`);
     if (element && data[key] !== null && data[key] !== undefined) {
       if (element.type === "checkbox") {
         element.checked = Boolean(data[key]);
@@ -545,9 +593,6 @@ document.addEventListener("DOMContentLoaded", function () {
       loadSimpleProfileData();
     }
   }
-
-  // Initialize dashboard functionality
-  initializeDashboard();
 });
 
 // Initialize simple profile page (profile.html)
@@ -580,9 +625,11 @@ function initializeSimpleProfilePage() {
           updateSidebarProfile(result.profilePictureUrl);
 
           // Update localStorage
-          const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+          const userData = JSON.parse(
+            sessionStorage.getItem("userData") || "{}"
+          );
           userData.profilePicture = result.profilePictureUrl;
-          localStorage.setItem("userData", JSON.stringify(userData));
+          sessionStorage.setItem("userData", JSON.stringify(userData));
 
           showToast("Profile picture updated successfully!", "success");
         }
@@ -627,7 +674,7 @@ async function loadSimpleProfileData() {
     updateSidebarProfile(userData.profilePicture, fullName || "User");
 
     // Store in localStorage
-    localStorage.setItem("userData", JSON.stringify(userData));
+    sessionStorage.setItem("userData", JSON.stringify(userData));
   } catch (error) {
     console.error("Failed to load profile data:", error);
     showToast("Failed to load profile data", "error");

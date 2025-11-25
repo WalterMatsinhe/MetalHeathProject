@@ -8,6 +8,15 @@ function initializeDashboard() {
     return;
   }
 
+  // Load user profile data to populate sidebar (if function exists)
+  if (typeof loadUserProfileData === "function") {
+    loadUserProfileData();
+  } else {
+    console.warn(
+      "loadUserProfileData not yet available, skipping profile load"
+    );
+  }
+
   // Set dashboard as default section
   showSection("dashboard");
 
@@ -32,7 +41,7 @@ async function loadDashboardStats() {
   console.log("Loading dashboard stats from server...");
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) {
       console.error("No auth token found");
       return;
@@ -157,7 +166,7 @@ async function saveDailyWellness() {
   };
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) {
       showNotification("Please login to save wellness check", "error");
       return;
@@ -286,7 +295,7 @@ async function loadRecentActivity() {
   if (!activityList) return;
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) return;
 
     // Get recent mood entries

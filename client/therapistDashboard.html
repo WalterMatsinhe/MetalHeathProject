@@ -282,7 +282,7 @@
           <section class="insights-section">
             <h3 class="dashboard-subtitle">Client Insights & Alerts</h3>
             <div class="insights-grid">
-              <div class="     insight-info">
+              <div class="insight-info">
                 <div class="insight-header">
                   <i class="fas fa-info-circle"></i>
                   <span>Active Conversations</span>
@@ -894,13 +894,6 @@
                   <i class="fa-solid fa-comments"></i>
                   Conversations
                 </h3>
-                <button
-                  onclick="forceRefreshTherapists()"
-                  class="btn-refresh"
-                  title="Refresh conversations"
-                >
-                  <i class="fa-solid fa-rotate"></i>
-                </button>
               </div>
 
               <div class="chat-search-box">
@@ -944,21 +937,42 @@
                   </div>
                 </div>
                 <div class="chat-header-actions">
-                  <button class="btn-icon-action" title="Video call" onclick="showSection('support')">
+                  <button
+                    class="btn-icon-action"
+                    title="Video call"
+                    onclick="showSection('support')"
+                  >
                     <i class="fa-solid fa-video"></i>
                   </button>
                   <div class="chat-options-container">
-                    <button class="btn-icon-action" title="More options" onclick="chatManager?.toggleChatOptions()">
+                    <button
+                      class="btn-icon-action"
+                      title="More options"
+                      onclick="chatManager?.toggleChatOptions()"
+                    >
                       <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
-                    <div class="chat-options-menu" id="chatOptionsMenu" style="display: none">
-                      <button class="option-item" onclick="chatManager?.viewUserProfile()">
+                    <div
+                      class="chat-options-menu"
+                      id="chatOptionsMenu"
+                      style="display: none"
+                    >
+                      <button
+                        class="option-item"
+                        onclick="chatManager?.viewUserProfile()"
+                      >
                         <i class="fa-solid fa-user"></i> View Profile
                       </button>
-                      <button class="option-item" onclick="chatManager?.clearChatHistory()">
+                      <button
+                        class="option-item"
+                        onclick="chatManager?.clearChatHistory()"
+                      >
                         <i class="fa-solid fa-trash"></i> Clear History
                       </button>
-                      <button class="option-item" onclick="chatManager?.blockUser()">
+                      <button
+                        class="option-item"
+                        onclick="chatManager?.blockUser()"
+                      >
                         <i class="fa-solid fa-ban"></i> Block User
                       </button>
                     </div>
@@ -1028,18 +1042,17 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <!-- Organized JavaScript Files -->
-    <script src="js/utils.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/navigation.js"></script>
-    <script src="js/video-call.js"></script>
-    <script src="js/profile.js"></script>
-    <script src="js/dashboard.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/notifications.js"></script>
-    <script src="js/sidebar.js"></script>
-    <script src="js/chat.js"></script>
-    <script src="js/therapist-profile.js"></script>
-    <script src="js/therapist-dashboard.js"></script>
+    <script src="js/utils/utils.js"></script>
+    <script src="js/auth/auth.js"></script>
+    <script src="js/ui/navigation.js"></script>
+    <script src="js/features/video-call.js"></script>
+    <script src="js/features/profile.js"></script>
+    <script src="js/features/therapist-profile.js"></script>
+    <script src="js/dashboard/therapist-dashboard.js"></script>
+    <script src="js/features/charts.js"></script>
+    <script src="js/features/notifications.js"></script>
+    <script src="js/ui/sidebar.js"></script>
+    <script src="js/features/chat.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

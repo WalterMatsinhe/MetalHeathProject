@@ -2,11 +2,12 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { loginLimiter, registerLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
-// Register
-router.post("/register", async (req, res) => {
+// Register with rate limiting
+router.post("/register", registerLimiter, async (req, res) => {
   try {
     const {
       firstName,
@@ -84,8 +85,8 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login
-router.post("/login", async (req, res) => {
+// Login with rate limiting
+router.post("/login", loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 

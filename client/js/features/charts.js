@@ -50,7 +50,7 @@ async function initDashboardMoodTrendChart() {
   ];
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (token) {
       const response = await fetch(
         "http://localhost:5000/api/mood/trend?days=14",
@@ -176,7 +176,7 @@ async function initActivityChart() {
 
   // Try to get real activity data from mood entries
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (token) {
       const response = await fetch("http://localhost:5000/api/mood?days=30", {
         headers: {
@@ -269,7 +269,7 @@ async function initWellnessGauge() {
 
   // Calculate wellness score from real data
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (token) {
       const response = await fetch(
         "http://localhost:5000/api/mood/stats?days=30",
@@ -345,7 +345,7 @@ async function initProgressChart() {
 
   // Calculate goals from real data
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (token) {
       const response = await fetch(
         "http://localhost:5000/api/mood/stats?days=30",
@@ -449,3 +449,4 @@ window.addEventListener("resize", function () {
     }
   }, 100);
 });
+

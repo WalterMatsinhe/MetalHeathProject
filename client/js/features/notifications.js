@@ -16,131 +16,160 @@ let notificationState = {
   },
 };
 
-// Function to fetch real-time notifications for users
+// Request debouncing - prevent too many simultaneous requests
+let notificationRequestTimeouts = {};
+const MIN_REQUEST_INTERVAL = 500; // Minimum 500ms between requests
+
+// Function to fetch real-time notifications for users with debouncing
 async function fetchUserNotifications() {
   try {
     const notifications = [];
 
-    // Fetch unread messages count
-    const chatResponse = await fetch("/api/chat/unread-count", {
-      headers: getAuthHeaders(),
-    });
-    if (chatResponse.ok) {
-      const { unreadCount } = await chatResponse.json();
-      if (unreadCount > 0) {
-        notifications.push({
-          id: `chat-${Date.now()}`,
-          type: "chat",
-          icon: "fa-comments",
-          iconBg: "#e1f5fe",
-          iconColor: "#00bfff",
-          title: "New Messages",
-          message: `You have ${unreadCount} unread message${
-            unreadCount > 1 ? "s" : ""
-          } from therapists`,
-          time: "Just now",
-          timestamp: new Date(),
-          priority: "high",
-          action: "chat",
-        });
+    // Helper function to make debounced fetch requests
+    async function debouncedFetch(key, url, successHandler, errorHandler) {
+      // Clear existing timeout if any
+      if (notificationRequestTimeouts[key]) {
+        clearTimeout(notificationRequestTimeouts[key]);
       }
-    }
 
-    // Fetch overdue reminders
-    const remindersResponse = await fetch("/api/reminders/overdue", {
-      headers: getAuthHeaders(),
-    });
-    if (remindersResponse.ok) {
-      const { reminders } = await remindersResponse.json();
-      reminders.slice(0, 3).forEach((reminder, index) => {
-        notifications.push({
-          id: `reminder-${reminder._id}`,
-          type: "reminder",
-          icon: "fa-bell",
-          iconBg: "#fff3e0",
-          iconColor: "#ff9800",
-          title: reminder.title,
-          message: reminder.description || "You have a pending reminder",
-          time: formatTimeAgo(new Date(reminder.reminderTime)),
-          timestamp: new Date(reminder.reminderTime),
-          priority: "medium",
-          action: "reminders",
-          data: reminder,
-        });
+      // Set new timeout to prevent request flooding
+      return new Promise((resolve) => {
+        notificationRequestTimeouts[key] = setTimeout(async () => {
+          try {
+            const response = await fetch(url, {
+              headers: getAuthHeaders(),
+            });
+            if (response.ok) {
+              const data = await response.json();
+              successHandler(data, notifications);
+            } else if (response.status !== 429) {
+              // Don't log 429 errors as they're expected during rate limiting
+              console.error(`Error fetching ${key}:`, response.status);
+            }
+          } catch (error) {
+            if (errorHandler) {
+              errorHandler(error);
+            }
+          }
+          resolve();
+        }, MIN_REQUEST_INTERVAL);
       });
     }
 
-    // Fetch upcoming reminders
-    const upcomingResponse = await fetch("/api/reminders/upcoming?days=1", {
-      headers: getAuthHeaders(),
-    });
-    if (upcomingResponse.ok) {
-      const { reminders } = await upcomingResponse.json();
-      reminders.slice(0, 2).forEach((reminder) => {
-        notifications.push({
-          id: `upcoming-${reminder._id}`,
-          type: "upcoming",
-          icon: "fa-clock",
-          iconBg: "#e3f2fd",
-          iconColor: "#2196f3",
-          title: "Upcoming: " + reminder.title,
-          message: reminder.description || "Coming up soon",
-          time: formatTimeAgo(new Date(reminder.reminderTime)),
-          timestamp: new Date(reminder.reminderTime),
-          priority: "low",
-          action: "reminders",
-          data: reminder,
-        });
-      });
-    }
+    // Fetch all notifications with staggered timing
+    await Promise.all([
+      debouncedFetch(
+        "chat-unread",
+        "/api/chat/unread-count",
+        ({ unreadCount }) => {
+          if (unreadCount > 0) {
+            notifications.push({
+              id: `chat-${Date.now()}`,
+              type: "chat",
+              icon: "fa-comments",
+              iconBg: "#e1f5fe",
+              iconColor: "#00bfff",
+              title: "New Messages",
+              message: `You have ${unreadCount} unread message${
+                unreadCount > 1 ? "s" : ""
+              } from therapists`,
+              time: "Just now",
+              timestamp: new Date(),
+              priority: "high",
+              action: "chat",
+            });
+          }
+        }
+      ),
 
-    // Check if daily mood check-in is done
-    const moodCheckResponse = await fetch("/api/mood/today/check", {
-      headers: getAuthHeaders(),
-    });
-    if (moodCheckResponse.ok) {
-      const { hasCheckedIn } = await moodCheckResponse.json();
-      if (!hasCheckedIn) {
-        notifications.push({
-          id: "mood-checkin",
-          type: "mood",
-          icon: "fa-face-smile",
-          iconBg: "#e8f5e8",
-          iconColor: "#4caf50",
-          title: "Daily Mood Check-in",
-          message: "Track your mood to identify patterns and triggers",
-          time: "Today",
-          timestamp: new Date(),
-          priority: "medium",
-          action: "mood",
-        });
-      }
-    }
+      debouncedFetch(
+        "reminders-overdue",
+        "/api/reminders/overdue",
+        ({ reminders }) => {
+          reminders.slice(0, 3).forEach((reminder, index) => {
+            notifications.push({
+              id: `reminder-${reminder._id}`,
+              type: "reminder",
+              icon: "fa-bell",
+              iconBg: "#fff3e0",
+              iconColor: "#ff9800",
+              title: reminder.title,
+              message: reminder.description || "You have a pending reminder",
+              time: formatTimeAgo(new Date(reminder.reminderTime)),
+              timestamp: new Date(reminder.reminderTime),
+              priority: "medium",
+              action: "reminders",
+              data: reminder,
+            });
+          });
+        }
+      ),
 
-    // Fetch goal achievements
-    const goalsResponse = await fetch("/api/goals/stats", {
-      headers: getAuthHeaders(),
-    });
-    if (goalsResponse.ok) {
-      const { stats } = await goalsResponse.json();
-      if (stats.completedToday > 0) {
-        notifications.push({
-          id: "goals-achievement",
-          type: "achievement",
-          icon: "fa-trophy",
-          iconBg: "#fff9c4",
-          iconColor: "#f9a825",
-          title: "Goal Achievement! 🎉",
-          message: `Congratulations! You've completed ${
-            stats.completedToday
-          } goal${stats.completedToday > 1 ? "s" : ""} today`,
-          time: "Today",
-          timestamp: new Date(),
-          priority: "low",
-          action: "goals",
-        });
-      }
-    }
+      debouncedFetch(
+        "reminders-upcoming",
+        "/api/reminders/upcoming?days=1",
+        ({ reminders }) => {
+          reminders.slice(0, 2).forEach((reminder) => {
+            notifications.push({
+              id: `upcoming-${reminder._id}`,
+              type: "upcoming",
+              icon: "fa-clock",
+              iconBg: "#e3f2fd",
+              iconColor: "#2196f3",
+              title: "Upcoming: " + reminder.title,
+              message: reminder.description || "Coming up soon",
+              time: formatTimeAgo(new Date(reminder.reminderTime)),
+              timestamp: new Date(reminder.reminderTime),
+              priority: "low",
+              action: "reminders",
+              data: reminder,
+            });
+          });
+        }
+      ),
+
+      debouncedFetch(
+        "mood-checkin",
+        "/api/mood/today/check",
+        ({ hasCheckedIn }) => {
+          if (!hasCheckedIn) {
+            notifications.push({
+              id: "mood-checkin",
+              type: "mood",
+              icon: "fa-face-smile",
+              iconBg: "#e8f5e8",
+              iconColor: "#4caf50",
+              title: "Daily Mood Check-in",
+              message: "Track your mood to identify patterns and triggers",
+              time: "Today",
+              timestamp: new Date(),
+              priority: "medium",
+              action: "mood",
+            });
+          }
+        }
+      ),
+
+      debouncedFetch("goals-stats", "/api/goals/stats", ({ stats }) => {
+        if (stats.completedToday > 0) {
+          notifications.push({
+            id: "goals-achievement",
+            type: "achievement",
+            icon: "fa-trophy",
+            iconBg: "#fff9c4",
+            iconColor: "#f9a825",
+            title: "Goal Achievement! 🎉",
+            message: `Congratulations! You've completed ${
+              stats.completedToday
+            } goal${stats.completedToday > 1 ? "s" : ""} today`,
+            time: "Today",
+            timestamp: new Date(),
+            priority: "low",
+            action: "goals",
+          });
+        }
+      }),
+    ]);
 
     // Sort notifications by priority and timestamp
     notifications.sort((a, b) => {
@@ -748,9 +777,24 @@ document.addEventListener("DOMContentLoaded", function () {
     startNotificationAutoRefresh();
   }, 1000);
 
-  // Initialize sidebar profile
+  // Initialize sidebar profile and load dashboard profile data
   if (typeof initializeSidebarProfile === "function") {
-    setTimeout(initializeSidebarProfile, 1000);
+    setTimeout(() => {
+      initializeSidebarProfile();
+
+      // Also try to load profile data if available
+      if (
+        window.location.pathname.includes("userDashboard") &&
+        typeof loadUserProfileData === "function"
+      ) {
+        loadUserProfileData();
+      } else if (
+        window.location.pathname.includes("therapistDashboard") &&
+        typeof loadTherapistProfileData === "function"
+      ) {
+        loadTherapistProfileData();
+      }
+    }, 1000);
   }
 
   // Initialize chat functionality for user dashboard

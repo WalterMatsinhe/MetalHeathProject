@@ -97,20 +97,23 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       const result = await res.json();
       if (res.ok && result.user) {
-        // Store JWT token for API requests
+        // Store JWT token for API requests (ONLY in sessionStorage for tab isolation)
         if (result.token) {
-          localStorage.setItem("authToken", result.token);
-          console.log("Token stored:", result.token.substring(0, 20) + "...");
+          sessionStorage.setItem("authToken", result.token);
+          console.log(
+            "Token stored in sessionStorage:",
+            result.token.substring(0, 20) + "..."
+          );
         }
 
-        // Store user data for profile and sidebar
+        // Store user data for profile and sidebar (ONLY in sessionStorage for tab isolation)
         if (result.user) {
-          localStorage.setItem("userData", JSON.stringify(result.user));
-          console.log("User data stored:", result.user);
+          sessionStorage.setItem("userData", JSON.stringify(result.user));
+          console.log("User data stored in sessionStorage:", result.user);
         }
 
         // Set flag to show toast on dashboard
-        localStorage.setItem("showLoginToast", "1");
+        sessionStorage.setItem("showLoginToast", "1");
 
         if (result.user.role === "admin") {
           window.location.href = "adminDashboard.html";
@@ -125,10 +128,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Show login toast on dashboard if flag is set
-  if (localStorage.getItem("showLoginToast")) {
+  // Show login toast on dashboard if flag is set (use sessionStorage only)
+  if (sessionStorage.getItem("showLoginToast")) {
     showToast("Login successful!", "success");
-    localStorage.removeItem("showLoginToast");
+    sessionStorage.removeItem("showLoginToast");
   }
 
   // Contact form handler

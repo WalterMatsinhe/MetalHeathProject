@@ -67,7 +67,7 @@ async function handleMoodEntrySubmit(e) {
   };
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch("http://localhost:5000/api/mood", {
       method: "POST",
       headers: {
@@ -135,7 +135,7 @@ async function updateMoodStatInDatabase(token) {
 // Load mood history
 async function loadMoodHistory(days = 30) {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(`http://localhost:5000/api/mood?days=${days}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -214,7 +214,7 @@ function displayMoodHistory(moods) {
 // Load mood statistics
 async function loadMoodStats(days = 30) {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(`http://localhost:5000/api/mood/stats?days=${days}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -370,7 +370,7 @@ function initializeMoodCharts() {
 // Update mood charts with data
 async function updateMoodCharts(days = 30) {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
 
     // Get trend data
     const trendResponse = await fetch(`http://localhost:5000/api/mood/trend?days=${days}`, {
@@ -441,3 +441,4 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 });
+

@@ -6,7 +6,6 @@ const MoodSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
     // Mood level (1-5 scale)
     moodLevel: {
@@ -81,7 +80,6 @@ const MoodSchema = new mongoose.Schema(
     entryDate: {
       type: Date,
       default: Date.now,
-      index: true,
     },
     // Is this the daily check-in
     isDailyCheckIn: {

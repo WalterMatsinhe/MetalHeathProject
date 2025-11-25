@@ -129,9 +129,9 @@ class VideoCallManager {
         userData = await response.json();
         console.log("✅ User data from API:", userData);
       } else {
-        // Fallback to localStorage if API fails
-        userData = JSON.parse(localStorage.getItem("user") || "{}");
-        console.log("⚠️ Using localStorage user data:", userData);
+        // Fallback to sessionStorage if API fails
+        userData = JSON.parse(sessionStorage.getItem("user") || "{}");
+        console.log("⚠️ Using sessionStorage user data:", userData);
       }
 
       const userType = this.isTherapist ? "therapist" : "user";
@@ -157,7 +157,7 @@ class VideoCallManager {
     } catch (error) {
       console.error("❌ Error registering user:", error);
       // Fallback registration with minimal data
-      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      const userData = JSON.parse(sessionStorage.getItem("user") || "{}");
       const userType = this.isTherapist ? "therapist" : "user";
       this.socket.emit("register", {
         userId: userData.id || "anonymous",
@@ -288,7 +288,7 @@ class VideoCallManager {
       }
 
       // Request call via Socket.IO
-      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      const userData = JSON.parse(sessionStorage.getItem("user") || "{}");
       const userName =
         userData.fullName ||
         `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||

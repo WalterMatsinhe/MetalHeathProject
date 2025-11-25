@@ -95,7 +95,24 @@ const UserSchema = new mongoose.Schema(
     },
     preferredLanguage: {
       type: String,
-      enum: ["english", "swahili", "kikuyu", "luo", "other"],
+      enum: [
+        "english",
+        "swahili",
+        "kikuyu",
+        "luo",
+        "french",
+        "spanish",
+        "portuguese",
+        "amharic",
+        "arabic",
+        "german",
+        "italian",
+        "chinese",
+        "japanese",
+        "korean",
+        "russian",
+        "other",
+      ],
       default: "english",
     },
     mentalHealthConcerns: [
@@ -255,6 +272,21 @@ const UserSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// ===== DATABASE INDEXES FOR PERFORMANCE =====
+// Note: email already has unique: true in schema which creates an index
+// Index role for filtering users by type
+UserSchema.index({ role: 1 });
+
+// Index for registration status (therapist approvals)
+UserSchema.index({ registrationStatus: 1 });
+
+// Compound index for therapist queries
+UserSchema.index({ role: 1, registrationStatus: 1 });
+
+// Index for date-based queries
+UserSchema.index({ createdAt: -1 });
+UserSchema.index({ registrationDate: -1 });
 
 // Pre-save middleware
 UserSchema.pre("save", function (next) {

@@ -31,9 +31,9 @@ class ChatManager {
 
       // Clear any cached therapist data
       console.log("Clearing any cached data...");
-      localStorage.removeItem("therapistsCache");
       sessionStorage.removeItem("therapistsCache");
-      localStorage.removeItem("userData"); // Also clear cached user data to force refresh
+      sessionStorage.removeItem("therapistsCache");
+      sessionStorage.removeItem("userData"); // Also clear cached user data to force refresh
 
       // Get current user info
       await this.loadCurrentUser();
@@ -50,9 +50,41 @@ class ChatManager {
       } else {
         await this.loadTherapists();
       }
+
+      // Start polling to periodically refresh the list
+      this.startPolling();
+
+      this.initialized = true;
     } catch (error) {
       console.error("Failed to initialize chat:", error);
       this.showError("Failed to initialize chat system");
+    }
+  }
+
+  startPolling() {
+    console.log("🔄 Starting polling mechanism...");
+    // Poll every 3 seconds
+    this.pollingInterval = setInterval(async () => {
+      if (this.currentUser?.role === "therapist") {
+        try {
+          await this.loadConversations();
+        } catch (error) {
+          console.error("Polling error (conversations):", error);
+        }
+      } else {
+        try {
+          await this.loadTherapists();
+        } catch (error) {
+          console.error("Polling error (therapists):", error);
+        }
+      }
+    }, 3000); // Poll every 3 seconds
+  }
+
+  stopPolling() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      console.log("⏹️ Polling stopped");
     }
   }
 
@@ -304,7 +336,7 @@ class ChatManager {
     console.log("=== FORCE REFRESHING THERAPIST DATA ===");
 
     // Clear any caches
-    localStorage.removeItem("therapistsCache");
+    sessionStorage.removeItem("therapistsCache");
     sessionStorage.removeItem("therapistsCache");
 
     // Clear the container first
@@ -356,13 +388,16 @@ class ChatManager {
 
   async loadConversations() {
     try {
-      const response = await fetch("/api/chat/conversations", {
+      // Add cache busting parameter to ensure fresh data
+      const response = await fetch(`/api/chat/conversations?t=${Date.now()}`, {
         headers: getAuthHeaders(),
+        cache: "no-cache",
       });
 
       if (!response.ok) throw new Error("Failed to load conversations");
 
       const conversations = await response.json();
+      console.log("Loaded", conversations.length, "conversations from API");
       this.displayConversationsList(conversations);
     } catch (error) {
       console.error("Error loading conversations:", error);
@@ -372,7 +407,10 @@ class ChatManager {
 
   displayTherapistsList(therapists) {
     const container = document.getElementById("therapistsList");
-    if (!container) return;
+    if (!container) {
+      console.error("❌ therapistsList container not found!");
+      return;
+    }
 
     console.log("=== DISPLAYING THERAPISTS ===");
     console.log("Container found:", !!container);
@@ -490,7 +528,16 @@ class ChatManager {
 
   displayConversationsList(conversations) {
     const container = document.getElementById("usersList");
-    if (!container) return;
+    if (!container) {
+      console.error("❌ usersList container not found!");
+      return;
+    }
+
+    console.log(
+      "📋 Updating conversations list with",
+      conversations.length,
+      "conversations"
+    );
 
     if (conversations.length === 0) {
       container.innerHTML =
@@ -498,7 +545,10 @@ class ChatManager {
       return;
     }
 
-    container.innerHTML = conversations
+    // IMPORTANT: Clear the container first to force a DOM refresh
+    container.innerHTML = "";
+
+    const html = conversations
       .map(
         (conv) => `
         <div class="therapist-card conversation-item user-card ${
@@ -547,6 +597,10 @@ class ChatManager {
       `
       )
       .join("");
+
+    container.innerHTML = html;
+    console.log("✅ Conversations list DOM updated successfully");
+    console.log("Container has", container.children.length, "children");
   }
 
   async selectTherapist(
@@ -784,51 +838,76 @@ class ChatManager {
     console.log("Current chat:", this.currentChat);
     console.log("Current user:", this.currentUser);
 
-    if (!this.currentChat) {
-      console.log("⚠️ No current chat selected, ignoring message");
-      return;
-    }
-
-    // Check if message is for current chat
     const messageFromId = data.from || data.sender?._id || data.sender?.id;
-    const isRelevantMessage = messageFromId === this.currentChat.id;
 
-    console.log("Message from ID:", messageFromId);
-    console.log("Current chat ID:", this.currentChat.id);
-    console.log("Is relevant:", isRelevantMessage);
+    // If there's a current chat, check if this message is relevant
+    if (this.currentChat) {
+      const isRelevantMessage = messageFromId === this.currentChat.id;
 
-    if (isRelevantMessage) {
-      console.log("✅ Message is relevant, adding to chat");
+      console.log("Message from ID:", messageFromId);
+      console.log("Current chat ID:", this.currentChat.id);
+      console.log("Is relevant:", isRelevantMessage);
 
-      // Add message to chat
-      this.addMessageToChat(
-        {
-          content: data.message || data.content,
-          sender: {
-            _id: data.from || data.sender?._id,
-            name: data.fromName || data.sender?.name,
+      if (isRelevantMessage) {
+        console.log("✅ Message is relevant, adding to chat");
+
+        // Add message to chat
+        this.addMessageToChat(
+          {
+            content: data.message || data.content,
+            sender: {
+              _id: data.from || data.sender?._id,
+              name: data.fromName || data.sender?.name,
+            },
+            createdAt: data.timestamp || data.createdAt,
           },
+          false
+        );
+
+        // Update message history
+        const messages = this.messageHistory.get(this.currentChat.id) || [];
+        messages.push({
+          content: data.message || data.content,
+          sender: { _id: data.from || data.sender?._id },
           createdAt: data.timestamp || data.createdAt,
-        },
-        false
-      );
-
-      // Update message history
-      const messages = this.messageHistory.get(this.currentChat.id) || [];
-      messages.push({
-        content: data.message || data.content,
-        sender: { _id: data.from || data.sender?._id },
-        createdAt: data.timestamp || data.createdAt,
-      });
-      this.messageHistory.set(this.currentChat.id, messages);
+        });
+        this.messageHistory.set(this.currentChat.id, messages);
+      } else {
+        console.log(
+          "⚠️ Message not relevant to current chat, but updating list"
+        );
+      }
     } else {
-      console.log("⚠️ Message not relevant to current chat, ignoring");
+      console.log("⚠️ No current chat selected");
     }
 
-    // Update conversations list for therapists
-    if (this.currentUser.role === "therapist") {
-      this.loadConversations();
-    }
+    // Clear cache to force fresh data
+    console.log("Clearing conversations and therapists cache...");
+    sessionStorage.removeItem("therapistsCache");
+    sessionStorage.removeItem("conversationsCache");
+
+    // Force a slight delay to ensure the message is saved on the backend
+    setTimeout(async () => {
+      // Update conversations list for therapists (always update)
+      if (this.currentUser.role === "therapist") {
+        console.log("🔄 Refreshing therapist conversations list...");
+        try {
+          await this.loadConversations();
+          console.log("✅ Conversations list updated");
+        } catch (error) {
+          console.error("❌ Failed to update conversations:", error);
+        }
+      } else {
+        // Update therapist list for users (to show unread indicators)
+        console.log("🔄 Refreshing user therapist list...");
+        try {
+          await this.loadTherapists();
+          console.log("✅ Therapists list updated");
+        } catch (error) {
+          console.error("❌ Failed to update therapists:", error);
+        }
+      }
+    }, 100); // Small delay to let backend save the message
 
     console.log("=== MESSAGE HANDLED ===");
   }
@@ -1201,9 +1280,9 @@ class ChatManager {
     console.log("Force refreshing all chat data...");
 
     // Clear all cached data
-    localStorage.removeItem("therapistsCache");
     sessionStorage.removeItem("therapistsCache");
-    localStorage.removeItem("userData");
+    sessionStorage.removeItem("therapistsCache");
+    sessionStorage.removeItem("userData");
     sessionStorage.removeItem("userData");
 
     // Reload current user

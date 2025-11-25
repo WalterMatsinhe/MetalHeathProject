@@ -9,7 +9,14 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const User = require("./models/User");
-const healthcheck = require("./healthcheck");
+const healthcheck = require("./utils/healthcheck");
+const logger = require("./utils/logger");
+const {
+  apiLimiter,
+  notificationsLimiter,
+  loginLimiter,
+  registerLimiter,
+} = require("./middleware/rateLimiter");
 
 const app = express();
 const server = http.createServer(app);
@@ -50,6 +57,7 @@ app.use(
 );
 app.use(cookieParser());
 
+// ===== SERVE STATIC FILES FIRST (BEFORE RATE LIMITING) =====
 // Serve static files from client directory
 app.use(express.static(path.join(__dirname, "../client")));
 
@@ -61,28 +69,24 @@ app.get("/", (req, res) => {
 // Serve assets folder for images and other static files
 app.use("/assets", express.static(path.join(__dirname, "../assets")));
 
+// ===== APPLY RATE LIMITING MIDDLEWARE =====
+// Apply general API limiter to all requests (but static files already served above)
+app.use(apiLimiter);
+
 // Store connectedUsers in app for routes to access
 app.set("connectedUsers", new Map());
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", require("./routes/profile"));
-app.use("/api/chat", require("./routes/chat"));
+app.use("/api/chat", notificationsLimiter, require("./routes/chat"));
 app.use("/api/admin", require("./routes/admin"));
-app.use("/api/mood", require("./routes/mood"));
-app.use("/api/goals", require("./routes/goals"));
-app.use("/api/reminders", require("./routes/reminders"));
+app.use("/api/mood", notificationsLimiter, require("./routes/mood"));
+app.use("/api/goals", notificationsLimiter, require("./routes/goals"));
+app.use("/api/reminders", notificationsLimiter, require("./routes/reminders"));
 app.use("/api/reports", require("./routes/reports"));
 
-console.log("✅ All routes registered:");
-console.log("  - /api/auth");
-console.log("  - /api/profile");
-console.log("  - /api/chat");
-console.log("  - /api/admin");
-console.log("  - /api/mood");
-console.log("  - /api/goals");
-console.log("  - /api/reminders");
-console.log("  - /api/reports");
+logger.success("All routes registered");
 
 // Import models for Socket.IO usage
 const Conversation = require("./models/Conversation");
@@ -94,32 +98,36 @@ const { auth, therapist } = require("./middleware/auth");
 // Add direct route for therapists with proper online status
 app.get("/api/therapists", auth, async (req, res) => {
   try {
+    // Use lean() and specific fields to reduce memory and query time
     const therapists = await User.find({
       role: "therapist",
       registrationStatus: { $ne: "rejected" },
-    }).select(
-      "firstName lastName specialization yearsExperience bio areasOfExpertise languagesSpoken stats profilePicture"
-    );
+    })
+      .select(
+        "firstName lastName specialization yearsExperience bio areasOfExpertise languagesSpoken stats profilePicture"
+      )
+      .lean();
 
     // Get connected users map for accurate online status
     const connectedUsers = app.get("connectedUsers") || new Map();
 
-    // Helper function to check if user is online
-    const isOnline = (userId) => {
-      for (const [socketId, user] of connectedUsers.entries()) {
-        if (user.userId && user.userId.toString() === userId.toString()) {
-          return true;
-        }
+    // Create a more efficient online status map
+    const onlineUserIds = new Set();
+    for (const [, user] of connectedUsers.entries()) {
+      if (user.userId) {
+        onlineUserIds.add(user.userId.toString());
       }
-      return false;
-    };
+    }
 
     // Add online status based on actual connections
-    const therapistsWithStatus = therapists.map((therapist) => ({
-      ...therapist.toObject(),
-      status: isOnline(therapist._id) ? "online" : "offline",
-      isOnline: isOnline(therapist._id),
-    }));
+    const therapistsWithStatus = therapists.map((therapist) => {
+      const isOnline = onlineUserIds.has(therapist._id.toString());
+      return {
+        ...therapist,
+        status: isOnline ? "online" : "offline",
+        isOnline,
+      };
+    });
 
     res.json(therapistsWithStatus);
   } catch (error) {
@@ -131,14 +139,15 @@ app.get("/api/therapists", auth, async (req, res) => {
 // Protected route for any authenticated user
 app.get("/api/user/profile", auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    // Use lean() and select only needed fields for better performance
+    const user = await User.findById(req.user.id).select("-password").lean();
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json({
       _id: user._id,
-      id: user._id, // Include both _id and id for compatibility
+      id: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
-      fullName: user.fullName,
+      fullName: `${user.firstName} ${user.lastName}`,
       email: user.email,
       role: user.role,
       profilePicture: user.profilePicture || "",
@@ -203,23 +212,35 @@ app.get("/api/test-auth", auth, (req, res) => {
   });
 });
 
-// Debug endpoint to check connected users
-app.get("/api/debug/connected-users", (req, res) => {
-  const appConnectedUsers = app.get("connectedUsers") || new Map();
-  const users = [];
-  for (const [socketId, user] of appConnectedUsers.entries()) {
-    users.push({
-      socketId,
-      userId: user.userId,
-      userType: user.userType,
-      userName: user.userName,
+// Debug endpoint to check connected users - ADMIN ONLY
+// Requires authentication to prevent information disclosure
+app.get("/api/debug/connected-users", auth, async (req, res) => {
+  try {
+    // Check if user is admin
+    const user = await User.findById(req.user.id);
+    if (user.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    const appConnectedUsers = app.get("connectedUsers") || new Map();
+    const users = [];
+    for (const [socketId, user] of appConnectedUsers.entries()) {
+      users.push({
+        socketId,
+        userId: user.userId,
+        userType: user.userType,
+        userName: user.userName,
+      });
+    }
+    res.json({
+      totalConnected: appConnectedUsers.size,
+      users,
+      timestamp: new Date().toISOString(),
     });
+  } catch (error) {
+    console.error("Error fetching connected users:", error);
+    res.status(500).json({ message: "Error fetching connected users" });
   }
-  res.json({
-    totalConnected: appConnectedUsers.size,
-    users,
-    timestamp: new Date().toISOString(),
-  });
 });
 
 // WebRTC Signaling Server
@@ -245,21 +266,16 @@ function isUserOnline(userId) {
 }
 
 io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.id}`);
+  logger.debug(`User connected: ${socket.id}`);
 
   // User registration
   socket.on("register", (data) => {
-    console.log("=== REGISTER EVENT RECEIVED ===");
-    console.log("Data:", JSON.stringify(data, null, 2));
-    console.log("Socket ID:", socket.id);
+    logger.debug("Register event received", data);
 
     const { userId, userType, userName } = data;
 
     if (!userId || !userType || !userName) {
-      console.error("❌ ERROR: Missing required registration data");
-      console.error("userId:", userId);
-      console.error("userType:", userType);
-      console.error("userName:", userName);
+      logger.warn("Missing registration data", { userId, userType, userName });
       return;
     }
 
@@ -287,24 +303,18 @@ io.on("connection", (socket) => {
       });
     }
 
-    console.log(`✅ ${userType} registered: ${userName} (${socket.id})`);
-    console.log("Total connected users:", connectedUsers.size);
+    logger.debug(
+      `${userType} registered: ${userName} (Total: ${connectedUsers.size})`
+    );
 
     // Broadcast therapist availability to ALL users (both existing and new)
     const therapistAvailability = getTherapistAvailability();
     io.emit("therapist-availability-update", therapistAvailability);
-    console.log("Broadcast therapist availability:", therapistAvailability);
-
-    console.log("=== REGISTER COMPLETE ===");
   });
 
   // Therapist availability toggle
   socket.on("toggle-therapist-availability", (isAvailable) => {
     const user = connectedUsers.get(socket.id);
-    console.log("=== TOGGLE THERAPIST AVAILABILITY ===");
-    console.log("Socket ID:", socket.id);
-    console.log("Is Available:", isAvailable);
-    console.log("User:", user);
 
     if (user && user.userType === "therapist") {
       user.isAvailable = isAvailable;
@@ -313,27 +323,14 @@ io.on("connection", (socket) => {
         therapist.isAvailable = isAvailable;
       }
 
-      console.log(
-        `✅ Therapist ${user.userName} is now ${
-          isAvailable ? "available" : "unavailable"
-        }`
-      );
-      console.log(
-        "Current therapists:",
-        Array.from(therapistUsers.values()).map((t) => ({
-          name: t.userName,
-          available: t.isAvailable,
-        }))
-      );
+      logger.info(`Therapist ${user.userName} availability: ${isAvailable}`);
 
       // Broadcast to all users
       const availability = getTherapistAvailability();
-      console.log("Broadcasting availability:", availability);
       io.emit("therapist-availability-update", availability);
     } else {
-      console.log("❌ User not found or not a therapist");
+      logger.warn("User not found or not a therapist", { socketId: socket.id });
     }
-    console.log("=== END TOGGLE ===");
   });
 
   // Call request from user to therapist
@@ -375,11 +372,12 @@ io.on("connection", (socket) => {
           therapistName: availableTherapist.userName,
         });
 
-        console.log(
-          `Call request from ${user.userName} to therapist ${availableTherapist.userName}, room: ${roomId}`
+        logger.info(
+          `Call request: ${user.userName} → ${availableTherapist.userName}`
         );
       } else {
         socket.emit("no-therapist-available");
+        logger.info("No available therapist for call request");
       }
     }
   });
@@ -392,7 +390,7 @@ io.on("connection", (socket) => {
     if (room) {
       // Notify user that therapist accepted
       io.to(room.user.socketId).emit("call-accepted", { roomId });
-      console.log(`Therapist accepted call in room ${roomId}`);
+      logger.info(`Call accepted in room ${roomId}`);
     }
   });
 
@@ -400,19 +398,16 @@ io.on("connection", (socket) => {
   socket.on("offer", (data) => {
     const { roomId, offer } = data;
     socket.to(roomId).emit("offer", { offer, from: socket.id });
-    console.log(`Offer sent in room ${roomId}`);
   });
 
   socket.on("answer", (data) => {
     const { roomId, answer } = data;
     socket.to(roomId).emit("answer", { answer, from: socket.id });
-    console.log(`Answer sent in room ${roomId}`);
   });
 
   socket.on("ice-candidate", (data) => {
     const { roomId, candidate } = data;
     socket.to(roomId).emit("ice-candidate", { candidate, from: socket.id });
-    console.log(`ICE candidate sent in room ${roomId}`);
   });
 
   // End call
@@ -426,7 +421,7 @@ io.on("connection", (socket) => {
 
       // Clean up room
       activeRooms.delete(roomId);
-      console.log(`Call ended in room ${roomId}`);
+      logger.info(`Call ended in room ${roomId}`);
     }
   });
 
@@ -436,12 +431,8 @@ io.on("connection", (socket) => {
       const { therapistId, userId, currentUserId } = data;
       const user = connectedUsers.get(socket.id);
 
-      console.log("=== JOIN-CHAT EVENT ===");
-      console.log("User:", user);
-      console.log("Data:", { therapistId, userId, currentUserId });
-
       if (!user) {
-        console.error("User not found in connectedUsers");
+        logger.warn("User not found in connectedUsers");
         return;
       }
 
@@ -452,8 +443,8 @@ io.on("connection", (socket) => {
       const chatRoom = `chat_${sortedIds[0]}_${sortedIds[1]}`;
 
       socket.join(chatRoom);
-      console.log(
-        `✅ ${user.userName} (${user.userType}) joined room: ${chatRoom}`
+      logger.info(
+        `${user.userName} (${user.userType}) joined room: ${chatRoom}`
       );
 
       // Notify others in the room
@@ -469,10 +460,8 @@ io.on("connection", (socket) => {
         room: chatRoom,
         message: "Successfully joined chat room",
       });
-
-      console.log("=== JOIN-CHAT COMPLETE ===");
     } catch (error) {
-      console.error("Error joining chat room:", error);
+      logger.error("Error joining chat room", error.message);
       socket.emit("chat-error", { message: "Failed to join chat room" });
     }
   });
@@ -480,25 +469,11 @@ io.on("connection", (socket) => {
   // send-message event handler - users and therapists send messages
   socket.on("send-message", async (data) => {
     try {
-      console.log("=== RECEIVED send-message EVENT ===");
-      console.log("Data received:", JSON.stringify(data, null, 2));
-      console.log("Socket ID:", socket.id);
-
       const { to, message, therapistId, userId } = data;
       const user = connectedUsers.get(socket.id);
 
-      console.log("User from connectedUsers:", user);
-      console.log("Message content:", message);
-      console.log("To:", to);
-      console.log("TherapistId:", therapistId);
-      console.log("UserId:", userId);
-
       if (!user) {
-        console.error("❌ ERROR: User not found in connectedUsers!");
-        console.error(
-          "Available socket IDs:",
-          Array.from(connectedUsers.keys())
-        );
+        logger.warn("User not found in connectedUsers for message send");
         socket.emit("message-error", {
           message: "User not registered. Please refresh the page.",
         });
@@ -506,7 +481,7 @@ io.on("connection", (socket) => {
       }
 
       if (!message || !message.trim()) {
-        console.error("❌ ERROR: Message is empty or invalid");
+        logger.warn("Empty message attempted");
         socket.emit("message-error", { message: "Message cannot be empty" });
         return;
       }
@@ -516,10 +491,8 @@ io.on("connection", (socket) => {
 
       if (user.userType === "therapist") {
         recipientId = to || userId;
-        console.log("→ Therapist sending message");
       } else {
         recipientId = to || therapistId;
-        console.log("→ User sending message");
       }
 
       const roomId1 = user.userId.toString();
@@ -527,16 +500,11 @@ io.on("connection", (socket) => {
       const sortedIds = [roomId1, roomId2].sort();
       const chatRoom = `chat_${sortedIds[0]}_${sortedIds[1]}`;
 
-      console.log("Recipient ID:", recipientId);
-      console.log("Chat room:", chatRoom);
-
       // Find or create conversation in database
       const conversation = await Conversation.findOrCreate(
         user.userType === "therapist" ? recipientId : user.userId,
         user.userType === "therapist" ? user.userId : recipientId
       );
-
-      console.log("Conversation found/created:", conversation._id);
 
       // Create and save message to database
       const newMessage = new Message({
@@ -550,10 +518,16 @@ io.on("connection", (socket) => {
       await newMessage.save();
       await newMessage.populate("sender", "firstName lastName role");
 
-      console.log("Message saved to database:", newMessage._id);
-
       // Update conversation unread count for recipient
       await conversation.incrementUnreadCount(recipientId);
+
+      // Update conversation lastMessage field
+      conversation.lastMessage = {
+        content: message.trim(),
+        sender: user.userId,
+        timestamp: new Date(),
+      };
+      await conversation.save();
 
       // Prepare message data for real-time broadcast
       const messageData = {
@@ -570,11 +544,7 @@ io.on("connection", (socket) => {
       // Send message to the chat room (includes sender and recipient if online)
       io.to(chatRoom).emit("message", messageData);
 
-      console.log(
-        `✅ Message sent in chat room ${chatRoom} from ${user.userType} ${
-          user.userName
-        }: ${message.trim()}`
-      );
+      logger.info(`Message sent in chat room ${chatRoom}`);
 
       // Send delivery confirmation to sender
       socket.emit("message-sent", {
@@ -582,11 +552,8 @@ io.on("connection", (socket) => {
         message: newMessage,
         conversationId: conversation._id,
       });
-
-      console.log("=== send-message EVENT COMPLETE ===");
     } catch (error) {
-      console.error("❌ ERROR in send-message:", error);
-      console.error("Error stack:", error.stack);
+      logger.error("Error in send-message", error.message);
       socket.emit("message-error", {
         message: `Failed to send message: ${error.message}`,
       });
@@ -634,11 +601,11 @@ io.on("connection", (socket) => {
 
   // Handle disconnect
   socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.id}`);
+    logger.debug(`User disconnected: ${socket.id}`);
 
     const user = connectedUsers.get(socket.id);
     if (user) {
-      console.log(`Cleaning up user: ${user.userName} (${user.userType})`);
+      logger.debug(`Cleaning up: ${user.userName} (${user.userType})`);
 
       // Clean up active rooms
       for (const [roomId, room] of activeRooms.entries()) {
@@ -648,7 +615,6 @@ io.on("connection", (socket) => {
         ) {
           io.to(roomId).emit("call-ended");
           activeRooms.delete(roomId);
-          console.log(`Cleaned up room ${roomId} due to disconnect`);
         }
       }
 
@@ -680,9 +646,7 @@ io.on("connection", (socket) => {
         });
       }
 
-      console.log(
-        `✅ User ${user.userName} cleaned up. Remaining users: ${connectedUsers.size}`
-      );
+      logger.debug(`User cleaned up. Remaining: ${connectedUsers.size}`);
     }
   });
 });
@@ -705,19 +669,11 @@ function getTherapistAvailability() {
 }
 
 function findAvailableTherapist() {
-  console.log("=== FINDING AVAILABLE THERAPIST ===");
-  console.log("Total therapists:", therapistUsers.size);
-
   for (const [socketId, therapist] of therapistUsers.entries()) {
-    console.log(
-      `Therapist: ${therapist.userName}, Available: ${therapist.isAvailable}`
-    );
     if (therapist.isAvailable === true) {
-      console.log(`✅ Found available therapist: ${therapist.userName}`);
       return therapist;
     }
   }
-  console.log("❌ No available therapist found");
   return null;
 }
 
@@ -780,49 +736,42 @@ async function connectToDatabase() {
   return new Promise((resolve, reject) => {
     async function attemptConnection(attempt = 0) {
       try {
-        console.log(
-          `\n📡 Connection attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}...`
+        logger.info(
+          `Connection attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}...`
         );
 
         await mongoose.connect(MONGO_URI, mongooseOptions);
 
         healthcheck.updateMongoStatus(true);
-        console.log("✅ MongoDB connected successfully");
+        logger.success("MongoDB connected successfully");
 
         // Setup connection event handlers
         mongoose.connection.on("disconnected", () => {
-          console.warn(
-            "⚠️  MongoDB connection lost. Attempting to reconnect..."
-          );
+          logger.warn("MongoDB connection lost. Attempting to reconnect...");
           healthcheck.updateMongoStatus(false);
         });
 
         mongoose.connection.on("reconnected", () => {
-          console.log("✅ MongoDB reconnected");
+          logger.success("MongoDB reconnected");
           healthcheck.updateMongoStatus(true);
         });
 
         mongoose.connection.on("error", (err) => {
-          console.error("❌ MongoDB error:", err.message);
+          logger.error("MongoDB error", err.message);
           healthcheck.updateMongoStatus(false);
         });
 
         resolve();
       } catch (error) {
         connectionAttempts++;
-        console.error(
-          `❌ Connection attempt ${attempt + 1} failed:`,
-          error.message
-        );
+        logger.error(`Connection attempt ${attempt + 1} failed`, error.message);
 
         if (attempt < MAX_RETRY_ATTEMPTS - 1) {
           const delay = getRetryDelay(attempt);
-          console.log(`⏳ Retrying in ${Math.round(delay / 1000)} seconds...`);
+          logger.warn(`Retrying in ${Math.round(delay / 1000)} seconds...`);
           setTimeout(() => attemptConnection(attempt + 1), delay);
         } else {
-          console.error(
-            "❌ Max connection attempts reached. Unable to connect to MongoDB."
-          );
+          logger.error("Max connection attempts reached");
           reject(error);
         }
       }
@@ -837,36 +786,34 @@ async function connectToDatabase() {
  */
 function setupGracefulShutdown() {
   const gracefulShutdown = async () => {
-    console.log(
-      "\n⚠️  SIGTERM signal received: closing HTTP server gracefully..."
-    );
+    logger.warn("Shutting down gracefully...");
 
     // Mark system as not ready to stop new requests
     healthcheck.markNotReady();
 
     // Stop accepting new connections
     server.close(async () => {
-      console.log("HTTP server closed");
+      logger.info("HTTP server closed");
 
       // Disconnect Socket.IO
       io.close();
-      console.log("Socket.IO server closed");
+      logger.info("Socket.IO server closed");
 
       // Close database connection
       try {
         await mongoose.connection.close();
-        console.log("MongoDB connection closed");
+        logger.info("MongoDB connection closed");
       } catch (err) {
-        console.error("Error closing MongoDB:", err);
+        logger.error("Error closing MongoDB", err.message);
       }
 
-      console.log("✅ Graceful shutdown complete");
+      logger.success("Graceful shutdown complete");
       process.exit(0);
     });
 
     // Force shutdown after 30 seconds
     setTimeout(() => {
-      console.error("❌ Forced shutdown - graceful shutdown timeout exceeded");
+      logger.error("Forced shutdown - graceful shutdown timeout exceeded");
       process.exit(1);
     }, 30000);
   };
@@ -890,15 +837,25 @@ async function startServer() {
 
     // Start listening
     server.listen(PORT, () => {
-      console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📡 Socket.IO server ready for WebRTC signaling`);
-      console.log(`\n📊 Health check endpoints available:`);
-      console.log(`   - Liveness:  http://localhost:${PORT}/health/live`);
-      console.log(`   - Readiness: http://localhost:${PORT}/health/ready`);
-      console.log(`   - Metrics:   http://localhost:${PORT}/health/metrics`);
+      // Display startup banner with configuration
+      logger.displayStartupBanner({
+        port: PORT,
+        env: process.env.NODE_ENV || "development",
+        db: true,
+      });
+
+      // Display connection status
+      logger.displayConnectionStatus([
+        { name: "MongoDB", connected: true, message: "Connected to database" },
+        {
+          name: "Socket.IO",
+          connected: true,
+          message: "WebRTC signaling ready",
+        },
+      ]);
     });
   } catch (error) {
-    console.error("❌ Failed to start server:", error);
+    logger.error("Failed to start server", error.message);
     process.exit(1);
   }
 }

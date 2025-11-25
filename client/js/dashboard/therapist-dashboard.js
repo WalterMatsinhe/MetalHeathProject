@@ -10,6 +10,15 @@ function initializeTherapistDashboard() {
 
   console.log("Initializing therapist dashboard...");
 
+  // Load therapist profile data to populate sidebar (if function exists)
+  if (typeof loadTherapistProfileData === "function") {
+    loadTherapistProfileData();
+  } else {
+    console.warn(
+      "loadTherapistProfileData not yet available, skipping profile load"
+    );
+  }
+
   // Set dashboard as default section
   showSection("dashboard");
 
@@ -35,7 +44,7 @@ function initializeTherapistDashboard() {
 // Load therapist dashboard statistics
 async function loadTherapistDashboardStats() {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) {
       console.error("No auth token found");
       return;
@@ -128,7 +137,7 @@ function updateTherapistStatElement(elementId, value) {
 // Load recent client activity
 async function loadTherapistRecentActivity() {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) return;
 
     const response = await fetch(
@@ -215,7 +224,7 @@ function createActivityItem(type, title, description, time) {
 // Load client insights
 async function loadClientInsights() {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) return;
 
     const response = await fetch(

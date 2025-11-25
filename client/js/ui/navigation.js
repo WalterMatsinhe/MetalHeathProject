@@ -2,7 +2,8 @@
 // NAVIGATION AND UI INTERACTIONS
 // ============================================
 
-// Adds blur effect to navbar on scroll
+// Make functions globally available immediately
+window.showSection = window.showSection || null;
 window.addEventListener("scroll", function () {
   const navbar = document.querySelector(".navbar");
   if (navbar) {
@@ -15,7 +16,7 @@ window.addEventListener("scroll", function () {
 });
 
 // Dashboard section navigation function for userDashboard.html
-function showSection(sectionId) {
+window.showSection = function (sectionId) {
   // Hide all sections
   const sections = document.querySelectorAll(".content-section");
   sections.forEach((sec) => {
@@ -81,7 +82,7 @@ function showSection(sectionId) {
       loadAllUsers(1, 20);
     }
   }
-}
+};
 
 // Initialize sidebar active state on page load
 document.addEventListener("DOMContentLoaded", function () {
@@ -93,3 +94,4 @@ document.addEventListener("DOMContentLoaded", function () {
     defaultLink.parentElement.classList.add("active");
   }
 });
+

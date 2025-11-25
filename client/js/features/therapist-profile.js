@@ -8,7 +8,7 @@ async function loadTherapistProfile() {
     console.log("Loading therapist profile...");
 
     // Clear any cached data first
-    localStorage.removeItem("userData");
+    sessionStorage.removeItem("userData");
     sessionStorage.removeItem("userData");
 
     const response = await fetch("/api/user/profile", {
@@ -275,3 +275,4 @@ window.forceRefreshTherapists = () => {
     window.chatManagerInstance.forceRefreshTherapists();
   }
 };
+

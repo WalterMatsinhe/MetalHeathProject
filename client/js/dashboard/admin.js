@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // Check if user has admin access
 function checkAdminAccess() {
-  const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+  const userData = JSON.parse(sessionStorage.getItem("userData") || "{}");
 
   if (userData.role !== "admin") {
     showToast("Access denied. Admin only.", "error");
@@ -47,7 +47,7 @@ function checkAdminAccess() {
 // Load dashboard statistics
 async function loadStatistics() {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch("http://localhost:5000/api/admin/statistics", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -94,7 +94,7 @@ async function loadPendingApplications() {
   const container = document.getElementById("pendingApplicationsContainer");
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(
       "http://localhost:5000/api/admin/applications/pending",
       {
@@ -108,7 +108,8 @@ async function loadPendingApplications() {
       throw new Error("Failed to load pending applications");
     }
 
-    const applications = await response.json();
+    const response_data = await response.json();
+    const applications = response_data.data || response_data;
 
     if (applications.length === 0) {
       container.innerHTML = `
@@ -220,7 +221,7 @@ async function loadApprovedTherapists() {
   const container = document.getElementById("approvedTherapistsContainer");
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(
       "http://localhost:5000/api/admin/applications/approved",
       {
@@ -234,7 +235,8 @@ async function loadApprovedTherapists() {
       throw new Error("Failed to load approved therapists");
     }
 
-    const therapists = await response.json();
+    const response_data = await response.json();
+    const therapists = response_data.data || response_data;
 
     if (therapists.length === 0) {
       container.innerHTML = `
@@ -332,7 +334,7 @@ async function loadRejectedApplications() {
   const container = document.getElementById("rejectedApplicationsContainer");
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(
       "http://localhost:5000/api/admin/applications/rejected",
       {
@@ -346,7 +348,8 @@ async function loadRejectedApplications() {
       throw new Error("Failed to load rejected applications");
     }
 
-    const applications = await response.json();
+    const response_data = await response.json();
+    const applications = response_data.data || response_data;
 
     if (applications.length === 0) {
       container.innerHTML = `
@@ -459,7 +462,7 @@ async function viewApplicationDetails(applicationId) {
   `;
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(
       `http://localhost:5000/api/admin/applications/${applicationId}`,
       {
@@ -600,7 +603,7 @@ async function approveApplication(applicationId, applicantName) {
   }
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(
       `http://localhost:5000/api/admin/applications/${applicationId}/approve`,
       {
@@ -666,7 +669,7 @@ async function confirmRejection() {
     '<i class="fa-solid fa-spinner fa-spin"></i> Rejecting...';
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     console.log("Sending rejection request...");
 
     const response = await fetch(
@@ -751,7 +754,7 @@ async function loadAllUsers(page = 1, limit = 20) {
   `;
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(
       `/api/admin/users/all?page=${page}&limit=${limit}`,
       {
@@ -913,7 +916,7 @@ async function viewUserDetails(userId) {
   `;
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(
       `http://localhost:5000/api/admin/applications/${userId}`,
       {
@@ -1098,7 +1101,7 @@ async function deleteUser(userId, userName) {
   }
 
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(
       `http://localhost:5000/api/admin/users/${userId}`,
       {
@@ -1139,7 +1142,7 @@ async function loadAdminProfile() {
     // Fetch fresh data from database instead of using only localStorage
     let userData = null;
     try {
-      const token = localStorage.getItem("authToken");
+      const token = sessionStorage.getItem("authToken");
       const response = await fetch("/api/profile/", {
         method: "GET",
         headers: {
@@ -1151,15 +1154,15 @@ async function loadAdminProfile() {
 
       if (response.ok) {
         userData = await response.json();
-        // Update localStorage with fresh data from database
-        localStorage.setItem("userData", JSON.stringify(userData));
+        // Update sessionStorage with fresh data from database
+        sessionStorage.setItem("userData", JSON.stringify(userData));
         console.log("Profile loaded from database", userData);
       } else {
         throw new Error("Failed to fetch from API");
       }
     } catch (error) {
-      console.warn("Could not fetch from API, using localStorage:", error);
-      userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      console.warn("Could not fetch from API, using sessionStorage:", error);
+      userData = JSON.parse(sessionStorage.getItem("userData") || "{}");
     }
 
     container.innerHTML = `
@@ -1433,7 +1436,7 @@ async function uploadAdminProfilePicture(file) {
     showToast("Uploading profile picture...", "info");
 
     // Upload file
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const formData = new FormData();
     formData.append("profilePicture", file);
 
@@ -1465,9 +1468,9 @@ async function uploadAdminProfilePicture(file) {
     }
 
     // Update localStorage
-    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    const userData = JSON.parse(sessionStorage.getItem("userData") || "{}");
     userData.profilePicture = result.profilePictureUrl;
-    localStorage.setItem("userData", JSON.stringify(userData));
+    sessionStorage.setItem("userData", JSON.stringify(userData));
 
     showToast("Profile picture updated successfully!", "success");
   } catch (error) {
@@ -1526,7 +1529,7 @@ async function saveAdminPersonalInfo() {
 
     showToast("Saving personal information...", "info");
 
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch("http://localhost:5000/api/profile/", {
       method: "PUT",
       headers: {
@@ -1549,12 +1552,12 @@ async function saveAdminPersonalInfo() {
     const result = await response.json();
 
     // Update localStorage
-    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    const userData = JSON.parse(sessionStorage.getItem("userData") || "{}");
     userData.firstName = firstName;
     userData.lastName = lastName;
     userData.phone = phone;
     userData.address = address;
-    localStorage.setItem("userData", JSON.stringify(userData));
+    sessionStorage.setItem("userData", JSON.stringify(userData));
 
     // Update sidebar with new name
     const sidebarName = document.getElementById("sidebarUserName");
@@ -1579,7 +1582,7 @@ async function saveAdminPersonalInfo() {
 // Load and display user reports
 async function loadReports(status = "all") {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) {
       console.error("No auth token found");
       showToast("Authentication required", "error");
@@ -1848,7 +1851,7 @@ function filterReports() {
 // Update report status
 async function updateReportStatus(reportId, newStatus, adminNotes = "") {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     const response = await fetch(`/api/reports/${reportId}`, {
       method: "PATCH",
       headers: {
