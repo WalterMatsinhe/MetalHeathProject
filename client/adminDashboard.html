@@ -81,6 +81,12 @@
             >
           </li>
           <li>
+            <a href="#reports" onclick="showSection('reports')"
+              ><i class="fa-solid fa-flag"></i>&nbsp; User Reports
+              <span class="badge" id="reportsBadge">0</span></a
+            >
+          </li>
+          <li>
             <a href="#users" onclick="showSection('users')"
               ><i class="fa-solid fa-users"></i>&nbsp; All Users</a
             >
@@ -237,6 +243,40 @@
             <div class="loading-message">
               <i class="fa-solid fa-spinner fa-spin"></i>
               <p>Loading rejected applications...</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Reports Section -->
+        <section id="reports" class="content-section content-section-hidden">
+          <header class="section-header">
+            <h2 class="title accent">User Reports</h2>
+            <p class="section-desc">
+              Review and manage user-submitted reports for inappropriate
+              behavior.
+            </p>
+          </header>
+          <hr class="dashboard-hr" />
+
+          <!-- Reports Filter -->
+          <div class="reports-filter-bar">
+            <select
+              id="reportsStatusFilter"
+              onchange="filterReports()"
+              class="reports-filter-select"
+            >
+              <option value="all">All Reports</option>
+              <option value="pending">Pending</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="resolved">Resolved</option>
+              <option value="dismissed">Dismissed</option>
+            </select>
+          </div>
+
+          <div class="reports-table-wrapper" id="reportsContainer">
+            <div class="loading-message">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <p>Loading reports...</p>
             </div>
           </div>
         </section>

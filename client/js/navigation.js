@@ -67,6 +67,20 @@ function showSection(sectionId) {
       loadUserProfileData();
     }
   }
+
+  // Special handling for reports section (admin dashboard)
+  if (sectionId === "reports") {
+    if (typeof loadReports === "function") {
+      loadReports("all");
+    }
+  }
+
+  // Special handling for users section (admin dashboard)
+  if (sectionId === "users") {
+    if (typeof loadAllUsers === "function") {
+      loadAllUsers(1, 20);
+    }
+  }
 }
 
 // Initialize sidebar active state on page load

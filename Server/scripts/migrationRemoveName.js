@@ -57,9 +57,9 @@ async function runMigration() {
 
     // Unset the 'name' field from all documents
     console.log("🗑️  Removing 'name' field from all users...");
-    const result = await User.updateMany(
+    const result = await User.collection.updateMany(
       { name: { $exists: true } },
-      { $unset: { name: "" } }
+      { $unset: { name: 1 } }
     );
 
     console.log(

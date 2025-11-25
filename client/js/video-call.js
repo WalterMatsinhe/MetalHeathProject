@@ -47,7 +47,9 @@ class VideoCallManager {
 
     this.socket.on("connect", () => {
       console.log("Socket.IO connected:", this.socket.id);
-      this.registerUser();
+      this.registerUser().catch((error) => {
+        console.error("Failed to register user:", error);
+      });
     });
 
     this.socket.on("disconnect", () => {
@@ -115,19 +117,54 @@ class VideoCallManager {
     });
   }
 
-  registerUser() {
-    // Register with socket server
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    const userType = this.isTherapist ? "therapist" : "user";
-    const userName = userData.name || (this.isTherapist ? "Therapist" : "User");
+  async registerUser() {
+    try {
+      // Fetch current user data from API to get accurate name
+      const response = await fetch("/api/user/profile", {
+        headers: getAuthHeaders(),
+      });
 
-    this.socket.emit("register", {
-      userId: userData.id || "anonymous",
-      userType: userType,
-      userName: userName,
-    });
+      let userData = { id: "anonymous" };
+      if (response.ok) {
+        userData = await response.json();
+        console.log("✅ User data from API:", userData);
+      } else {
+        // Fallback to localStorage if API fails
+        userData = JSON.parse(localStorage.getItem("user") || "{}");
+        console.log("⚠️ Using localStorage user data:", userData);
+      }
 
-    console.log("Registered as:", userType, userName);
+      const userType = this.isTherapist ? "therapist" : "user";
+      const userName =
+        userData.fullName ||
+        `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||
+        (this.isTherapist ? "Therapist" : "User");
+
+      console.log("📝 Constructing userName:", {
+        fullName: userData.fullName,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        finalUserName: userName,
+      });
+
+      this.socket.emit("register", {
+        userId: userData._id || userData.id || "anonymous",
+        userType: userType,
+        userName: userName,
+      });
+
+      console.log("✅ Registered as:", userType, userName);
+    } catch (error) {
+      console.error("❌ Error registering user:", error);
+      // Fallback registration with minimal data
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      const userType = this.isTherapist ? "therapist" : "user";
+      this.socket.emit("register", {
+        userId: userData.id || "anonymous",
+        userType: userType,
+        userName: userType === "therapist" ? "Therapist" : "User",
+      });
+    }
   }
 
   init() {
@@ -252,8 +289,12 @@ class VideoCallManager {
 
       // Request call via Socket.IO
       const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      const userName =
+        userData.fullName ||
+        `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||
+        "Anonymous User";
       this.socket.emit("request-call", {
-        userName: userData.name || "Anonymous User",
+        userName: userName,
         userId: userData.id || "anonymous",
       });
 
@@ -822,16 +863,32 @@ class VideoCallManager {
     const startBtn = document.getElementById("startCallBtn");
 
     if (status) {
+      // Get the selected therapist's name from the chat manager
+      let therapistName = "Therapist";
+      if (
+        window.chatManagerInstance &&
+        window.chatManagerInstance.currentChat
+      ) {
+        const currentChat = window.chatManagerInstance.currentChat;
+        if (currentChat.firstName || currentChat.lastName) {
+          therapistName = `${currentChat.firstName || ""} ${
+            currentChat.lastName || ""
+          }`.trim();
+        } else {
+          therapistName = currentChat.name || "Therapist";
+        }
+      }
+
       if (this.therapistAvailable) {
         status.innerHTML = `
           <span class="status-indicator online"></span>
-          <span class="status-text">Therapist available</span>
+          <span class="status-text">${therapistName} available</span>
         `;
         if (startBtn) startBtn.disabled = false;
       } else {
         status.innerHTML = `
           <span class="status-indicator offline"></span>
-          <span class="status-text">Therapist offline</span>
+          <span class="status-text">${therapistName} offline</span>
         `;
         if (startBtn) startBtn.disabled = true;
       }

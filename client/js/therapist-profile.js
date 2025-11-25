@@ -140,7 +140,7 @@ function updateTherapistSidebar(data) {
   const sidebarProfileImage = document.getElementById("sidebarProfileImage");
 
   // Determine display name
-  let displayName = data.name;
+  let displayName = data.fullName;
   if (!displayName && (data.firstName || data.lastName)) {
     displayName = `${data.firstName || ""} ${data.lastName || ""}`.trim();
   }

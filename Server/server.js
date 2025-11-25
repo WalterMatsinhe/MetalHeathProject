@@ -72,6 +72,7 @@ app.use("/api/admin", require("./routes/admin"));
 app.use("/api/mood", require("./routes/mood"));
 app.use("/api/goals", require("./routes/goals"));
 app.use("/api/reminders", require("./routes/reminders"));
+app.use("/api/reports", require("./routes/reports"));
 
 console.log("✅ All routes registered:");
 console.log("  - /api/auth");
@@ -81,6 +82,7 @@ console.log("  - /api/admin");
 console.log("  - /api/mood");
 console.log("  - /api/goals");
 console.log("  - /api/reminders");
+console.log("  - /api/reports");
 
 // Import models for Socket.IO usage
 const Conversation = require("./models/Conversation");
@@ -450,7 +452,9 @@ io.on("connection", (socket) => {
       const chatRoom = `chat_${sortedIds[0]}_${sortedIds[1]}`;
 
       socket.join(chatRoom);
-      console.log(`✅ ${user.userName} (${user.userType}) joined room: ${chatRoom}`);
+      console.log(
+        `✅ ${user.userName} (${user.userType}) joined room: ${chatRoom}`
+      );
 
       // Notify others in the room
       socket.to(chatRoom).emit("user-joined-chat", {
@@ -544,7 +548,7 @@ io.on("connection", (socket) => {
       });
 
       await newMessage.save();
-      await newMessage.populate("sender", "name firstName lastName role");
+      await newMessage.populate("sender", "firstName lastName role");
 
       console.log("Message saved to database:", newMessage._id);
 
@@ -594,7 +598,8 @@ io.on("connection", (socket) => {
     const user = connectedUsers.get(socket.id);
 
     if (user) {
-      const recipientId = to || (user.userType === "therapist" ? userId : therapistId);
+      const recipientId =
+        to || (user.userType === "therapist" ? userId : therapistId);
       const roomId1 = user.userId.toString();
       const roomId2 = recipientId.toString();
       const sortedIds = [roomId1, roomId2].sort();
@@ -613,7 +618,8 @@ io.on("connection", (socket) => {
     const user = connectedUsers.get(socket.id);
 
     if (user) {
-      const recipientId = to || (user.userType === "therapist" ? userId : therapistId);
+      const recipientId =
+        to || (user.userType === "therapist" ? userId : therapistId);
       const roomId1 = user.userId.toString();
       const roomId2 = recipientId.toString();
       const sortedIds = [roomId1, roomId2].sort();

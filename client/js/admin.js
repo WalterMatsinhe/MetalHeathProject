@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Load initial data
   loadStatistics();
   loadPendingApplications();
+  loadReports("all");
 
   // Initialize admin profile picture upload
   initializeAdminProfilePictureUpload();
@@ -734,7 +735,7 @@ function formatDate(dateString) {
 }
 
 // Load all users
-async function loadAllUsers() {
+async function loadAllUsers(page = 1, limit = 20) {
   const container = document.querySelector("#users .users-container");
 
   if (!container) {
@@ -751,19 +752,23 @@ async function loadAllUsers() {
 
   try {
     const token = localStorage.getItem("authToken");
-    const response = await fetch("http://localhost:5000/api/admin/users/all", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await fetch(
+      `/api/admin/users/all?page=${page}&limit=${limit}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to load users");
     }
 
-    const users = await response.json();
+    const data = await response.json();
+    const users = data.users || data;
 
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">
@@ -1564,5 +1569,324 @@ async function saveAdminPersonalInfo() {
   } catch (error) {
     console.error("Save error:", error);
     showToast(error.message || "Failed to save personal information", "error");
+  }
+}
+
+// ============================================
+// REPORTS MANAGEMENT
+// ============================================
+
+// Load and display user reports
+async function loadReports(status = "all") {
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      console.error("No auth token found");
+      showToast("Authentication required", "error");
+      return;
+    }
+
+    const url =
+      status === "all"
+        ? "/api/reports?page=1&limit=20"
+        : `/api/reports?page=1&limit=20&status=${status}`;
+
+    console.log("Loading reports from:", url);
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log("Reports response status:", response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || `Failed to load reports: ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+    console.log("Reports data received:", data);
+
+    displayReports(data.reports || []);
+    updateReportsBadge(data.pagination?.totalReports || 0);
+  } catch (error) {
+    console.error("Error loading reports:", error);
+    showToast("Failed to load reports: " + error.message, "error");
+  }
+}
+
+// Display reports in the container
+function displayReports(reports) {
+  const container = document.getElementById("reportsContainer");
+  if (!container) return;
+
+  if (reports.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <i class="fa-solid fa-inbox"></i>
+        <h3>No Reports</h3>
+        <p>There are no user reports to display.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const tableHTML = `
+    <table class="reports-table">
+      <thead>
+        <tr>
+          <th style="width: 40px;"></th>
+          <th style="width: 100px;">Report ID</th>
+          <th>Reported User</th>
+          <th>Reported By</th>
+          <th>Type</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${reports
+          .map((report) => {
+            const reportedUser = report.reportedUserId;
+            const reportingUser = report.reportingUserId;
+            const statusClass = `status-${report.status}`;
+            const statusLabel =
+              report.status.charAt(0).toUpperCase() + report.status.slice(1);
+            const reportDate = new Date(report.createdAt).toLocaleDateString();
+
+            return `
+              <tr class="report-row" data-report-id="${report._id}">
+                <td>
+                  <button class="report-expand-btn" onclick="toggleReportDetails('${
+                    report._id
+                  }')">
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </button>
+                </td>
+                <td><span class="report-id">${report._id.substring(
+                  0,
+                  8
+                )}...</span></td>
+                <td>
+                  <div class="report-user">${reportedUser.firstName} ${
+              reportedUser.lastName
+            }</div>
+                  <div class="report-user-email">${reportedUser.email}</div>
+                </td>
+                <td>
+                  <div class="report-user">${reportingUser.firstName} ${
+              reportingUser.lastName
+            }</div>
+                  <div class="report-user-email">${reportingUser.email}</div>
+                </td>
+                <td>${report.reportType}</td>
+                <td><span class="report-reason" title="${
+                  report.reason
+                }">${report.reason.substring(0, 60)}${
+              report.reason.length > 60 ? "..." : ""
+            }</span></td>
+                <td><span class="report-status-badge ${statusClass}">${statusLabel}</span></td>
+                <td><span class="report-date-cell">${reportDate}</span></td>
+                <td>
+                  <div class="report-actions-cell">
+                    <button class="btn btn-sm btn-primary" onclick="updateReportStatus('${
+                      report._id
+                    }', 'reviewed')">Review</button>
+                    <button class="btn btn-sm btn-success" onclick="updateReportStatus('${
+                      report._id
+                    }', 'resolved')">Resolve</button>
+                    <button class="btn btn-sm btn-secondary" onclick="updateReportStatus('${
+                      report._id
+                    }', 'dismissed')">Dismiss</button>
+                  </div>
+                </td>
+              </tr>
+              <tr class="report-details-row" id="details-${report._id}">
+                <td colspan="9">
+                  <div class="report-details-content">
+                    <div class="report-details-section">
+                      <h4>Report Information</h4>
+                      <div class="report-detail-field">
+                        <span class="report-detail-label">Full Report ID</span>
+                        <span class="report-detail-value">${report._id}</span>
+                      </div>
+                      <div class="report-detail-field">
+                        <span class="report-detail-label">Report Type</span>
+                        <span class="report-detail-value">${
+                          report.reportType
+                        }</span>
+                      </div>
+                      <div class="report-detail-field">
+                        <span class="report-detail-label">Full Reason</span>
+                        <span class="report-detail-value">${
+                          report.reason
+                        }</span>
+                      </div>
+                      <div class="report-detail-field">
+                        <span class="report-detail-label">Created Date</span>
+                        <span class="report-detail-value">${new Date(
+                          report.createdAt
+                        ).toLocaleString()}</span>
+                      </div>
+                      ${
+                        report.resolvedAt
+                          ? `<div class="report-detail-field">
+                              <span class="report-detail-label">Resolved Date</span>
+                              <span class="report-detail-value">${new Date(
+                                report.resolvedAt
+                              ).toLocaleString()}</span>
+                            </div>`
+                          : ""
+                      }
+                    </div>
+                    <div class="report-details-section">
+                      <h4>User Information</h4>
+                      <div class="report-detail-field">
+                        <span class="report-detail-label">Reported User</span>
+                        <span class="report-detail-value">${
+                          reportedUser.firstName
+                        } ${reportedUser.lastName}</span>
+                      </div>
+                      <div class="report-detail-field">
+                        <span class="report-detail-label">User Email</span>
+                        <span class="report-detail-value">${
+                          reportedUser.email
+                        }</span>
+                      </div>
+                      <div class="report-detail-field">
+                        <span class="report-detail-label">User Role</span>
+                        <span class="report-detail-value">${
+                          reportedUser.role
+                        }</span>
+                      </div>
+                      <div class="report-detail-field">
+                        <span class="report-detail-label">Reported By</span>
+                        <span class="report-detail-value">${
+                          reportingUser.firstName
+                        } ${reportingUser.lastName}</span>
+                      </div>
+                      <div class="report-detail-field">
+                        <span class="report-detail-label">Reporter Email</span>
+                        <span class="report-detail-value">${
+                          reportingUser.email
+                        }</span>
+                      </div>
+                    </div>
+                    <div class="report-admin-section" style="grid-column: 1 / -1;">
+                      <h4>Admin Notes</h4>
+                      <textarea class="admin-notes-textarea" id="notes-${
+                        report._id
+                      }" placeholder="Add notes about this report...">${
+              report.adminNotes || ""
+            }</textarea>
+                      <div class="admin-actions">
+                        <button class="btn btn-warning" onclick="updateReportStatus('${
+                          report._id
+                        }', 'reviewed', document.getElementById('notes-${
+              report._id
+            }').value)">
+                          <i class="fa-solid fa-check"></i> Mark as Reviewed
+                        </button>
+                        <button class="btn btn-success" onclick="updateReportStatus('${
+                          report._id
+                        }', 'resolved', document.getElementById('notes-${
+              report._id
+            }').value)">
+                          <i class="fa-solid fa-checkmark"></i> Resolve
+                        </button>
+                        <button class="btn btn-danger" onclick="updateReportStatus('${
+                          report._id
+                        }', 'dismissed', document.getElementById('notes-${
+              report._id
+            }').value)">
+                          <i class="fa-solid fa-times"></i> Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          })
+          .join("")}
+      </tbody>
+    </table>
+  `;
+
+  container.innerHTML = tableHTML;
+}
+
+function toggleReportDetails(reportId) {
+  const detailsRow = document.getElementById(`details-${reportId}`);
+  const expandBtn = document.querySelector(
+    `[data-report-id="${reportId}"] .report-expand-btn`
+  );
+
+  if (detailsRow.classList.contains("expanded")) {
+    detailsRow.classList.remove("expanded");
+    expandBtn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+  } else {
+    detailsRow.classList.add("expanded");
+    expandBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+  }
+}
+
+// Filter reports by status
+function filterReports() {
+  const statusFilter = document.getElementById("reportsStatusFilter");
+  const status = statusFilter.value;
+  loadReports(status);
+}
+
+// Update report status
+async function updateReportStatus(reportId, newStatus, adminNotes = "") {
+  try {
+    const token = localStorage.getItem("authToken");
+    const response = await fetch(`/api/reports/${reportId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: newStatus,
+        adminNotes: adminNotes || "",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update report");
+    }
+
+    showToast(`Report marked as ${newStatus}`, "success");
+
+    // Reload reports
+    const statusFilter = document.getElementById("reportsStatusFilter");
+    const currentStatus = statusFilter.value;
+    loadReports(currentStatus);
+  } catch (error) {
+    console.error("Error updating report:", error);
+    showToast("Failed to update report", "error");
+  }
+}
+
+// Open report details modal (optional)
+function openReportDetails(reportId) {
+  showToast("Opening report details...", "info");
+  // Could expand to show full modal with more details
+}
+
+// Update reports badge count
+function updateReportsBadge(count) {
+  const badge = document.getElementById("reportsBadge");
+  if (badge) {
+    badge.textContent = count > 0 ? count : "0";
   }
 }

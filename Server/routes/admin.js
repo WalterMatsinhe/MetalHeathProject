@@ -227,9 +227,27 @@ router.get("/users", auth, isAdmin, async (req, res) => {
 // Get all users (including therapists and admins)
 router.get("/users/all", auth, isAdmin, async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
 
-    res.json(users);
+    const users = await User.find()
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .skip(skip);
+
+    const total = await User.countDocuments();
+
+    res.json({
+      users,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        total: total,
+        hasMore: skip + users.length < total,
+      },
+    });
   } catch (err) {
     console.error("Error fetching all users:", err);
     res.status(500).json({ message: err.message });

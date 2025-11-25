@@ -73,14 +73,20 @@ class ChatManager {
 
       this.currentUser = await response.json();
 
-      // Determine user role from URL if not in profile
+      console.log("Current user loaded:", this.currentUser);
+      console.log("User role:", this.currentUser.role);
+
+      // Ensure role is set (should always come from API)
       if (!this.currentUser.role) {
-        this.currentUser.role = window.location.pathname.includes("therapist")
-          ? "therapist"
-          : "user";
+        console.error("ERROR: User role not received from API!");
+        this.currentUser.role = "user"; // Safe default
       }
 
-      console.log("Current user loaded:", this.currentUser);
+      // Re-register video call user with accurate user data
+      if (window.videoCallManager) {
+        console.log("Re-registering video call user with accurate data...");
+        await window.videoCallManager.registerUser();
+      }
     } catch (error) {
       console.error("Error loading user profile:", error);
       throw error;
@@ -101,7 +107,7 @@ class ChatManager {
       console.log("Socket ID:", this.socket.id);
 
       const userName =
-        this.currentUser.name ||
+        this.currentUser.fullName ||
         `${this.currentUser.firstName || ""} ${
           this.currentUser.lastName || ""
         }`.trim() ||
@@ -224,8 +230,15 @@ class ChatManager {
         if (therapistCard) {
           const therapistId = therapistCard.dataset.therapistId;
           const therapistName = therapistCard.dataset.therapistName;
+          const firstName = therapistCard.dataset.therapistFirstname || "";
+          const lastName = therapistCard.dataset.therapistLastname || "";
           if (therapistId && therapistName) {
-            this.selectTherapist(therapistId, therapistName);
+            this.selectTherapist(
+              therapistId,
+              therapistName,
+              firstName,
+              lastName
+            );
           }
         }
       });
@@ -238,8 +251,15 @@ class ChatManager {
             e.preventDefault();
             const therapistId = therapistCard.dataset.therapistId;
             const therapistName = therapistCard.dataset.therapistName;
+            const firstName = therapistCard.dataset.therapistFirstname || "";
+            const lastName = therapistCard.dataset.therapistLastname || "";
             if (therapistId && therapistName) {
-              this.selectTherapist(therapistId, therapistName);
+              this.selectTherapist(
+                therapistId,
+                therapistName,
+                firstName,
+                lastName
+              );
             }
           }
         }
@@ -388,6 +408,14 @@ class ChatManager {
         <div class="therapist-card" 
              data-therapist-id="${therapist._id}"
              data-therapist-name="${displayName.replace(/"/g, "&quot;")}"
+             data-therapist-firstname="${(therapist.firstName || "").replace(
+               /"/g,
+               "&quot;"
+             )}"
+             data-therapist-lastname="${(therapist.lastName || "").replace(
+               /"/g,
+               "&quot;"
+             )}"
              role="button"
              tabindex="0">
           <div class="therapist-avatar">
@@ -521,7 +549,12 @@ class ChatManager {
       .join("");
   }
 
-  async selectTherapist(therapistId, therapistName) {
+  async selectTherapist(
+    therapistId,
+    therapistName,
+    firstName = "",
+    lastName = ""
+  ) {
     try {
       console.log("=== SELECTING THERAPIST ===");
       console.log("Therapist ID:", therapistId);
@@ -531,6 +564,8 @@ class ChatManager {
       this.currentChat = {
         id: therapistId,
         name: therapistName,
+        firstName: firstName,
+        lastName: lastName,
         type: "therapist",
       };
 
@@ -652,6 +687,13 @@ class ChatManager {
       if (!response.ok) throw new Error("Failed to load chat history");
 
       const data = await response.json();
+
+      // Store the actual conversation ID for use in clear/delete operations
+      if (data.conversation && data.conversation.id) {
+        this.currentChat.conversationId = data.conversation.id;
+        console.log("Stored conversation ID:", data.conversation.id);
+      }
+
       this.displayMessages(data.messages || []);
       this.messageHistory.set(therapistId, data.messages || []);
     } catch (error) {
@@ -669,6 +711,13 @@ class ChatManager {
       if (!response.ok) throw new Error("Failed to load chat history");
 
       const data = await response.json();
+
+      // Store the actual conversation ID for use in clear/delete operations
+      if (data.conversation && data.conversation.id) {
+        this.currentChat.conversationId = data.conversation.id;
+        console.log("Stored conversation ID:", data.conversation.id);
+      }
+
       this.displayMessages(data.messages || []);
       this.messageHistory.set(userId, data.messages || []);
     } catch (error) {
@@ -864,7 +913,6 @@ class ChatManager {
           _id: this.currentUser._id || this.currentUser.id,
           firstName: this.currentUser.firstName,
           lastName: this.currentUser.lastName,
-          name: this.currentUser.name,
         },
         createdAt: new Date().toISOString(),
       },
@@ -1090,6 +1138,14 @@ class ChatManager {
     }
   }
 
+  showSuccess(message) {
+    console.log("Chat success:", message);
+    // Show success toast notification
+    if (typeof showToast === "function") {
+      showToast(message, "success");
+    }
+  }
+
   // Update user online/offline status in real-time
   updateUserStatus(userId, status) {
     console.log(`Updating status for user ${userId} to ${status}`);
@@ -1185,7 +1241,7 @@ class ChatManager {
     }
     console.log("Opening profile for:", this.currentChat.id);
     this.closeChatOptions();
-    
+
     try {
       const response = await fetch(`/api/profile/${this.currentChat.id}`, {
         headers: getAuthHeaders(),
@@ -1208,7 +1264,7 @@ class ChatManager {
     }
     console.log("Opening therapist profile for:", this.currentChat.id);
     this.closeChatOptions();
-    
+
     try {
       const response = await fetch(`/api/profile/${this.currentChat.id}`, {
         headers: getAuthHeaders(),
@@ -1234,14 +1290,21 @@ class ChatManager {
           
           <div class="profile-modal-header">
             <div class="profile-modal-avatar">
-              ${userData.profilePicture 
-                ? `<img src="${userData.profilePicture}" alt="${userData.firstName} ${userData.lastName}" onerror="this.src='../assets/profile-pictures/default-avatar.svg'">`
-                : `<span>${this.getInitials(`${userData.firstName} ${userData.lastName}`)}</span>`
+              ${
+                userData.profilePicture
+                  ? `<img src="${userData.profilePicture}" alt="${userData.firstName} ${userData.lastName}" onerror="this.src='../assets/profile-pictures/default-avatar.svg'">`
+                  : `<span>${this.getInitials(
+                      `${userData.firstName} ${userData.lastName}`
+                    )}</span>`
               }
             </div>
             <div class="profile-modal-title">
               <h2>${userData.firstName} ${userData.lastName}</h2>
-              <p class="profile-role">${userData.role === 'therapist' ? '👨‍⚕️ Mental Health Professional' : '👤 User'}</p>
+              <p class="profile-role">${
+                userData.role === "therapist"
+                  ? "👨‍⚕️ Mental Health Professional"
+                  : "👤 User"
+              }</p>
             </div>
           </div>
 
@@ -1251,164 +1314,247 @@ class ChatManager {
               <h3>Personal Information</h3>
               <div class="profile-item">
                 <span class="label"><i class="fa-solid fa-user"></i> First Name:</span>
-                <span class="value">${userData.firstName || 'N/A'}</span>
+                <span class="value">${userData.firstName || "N/A"}</span>
               </div>
               <div class="profile-item">
                 <span class="label"><i class="fa-solid fa-user"></i> Last Name:</span>
-                <span class="value">${userData.lastName || 'N/A'}</span>
+                <span class="value">${userData.lastName || "N/A"}</span>
               </div>
               <div class="profile-item">
                 <span class="label"><i class="fa-solid fa-envelope"></i> Email:</span>
-                <span class="value">${userData.email || 'N/A'}</span>
+                <span class="value">${userData.email || "N/A"}</span>
               </div>
               <div class="profile-item">
                 <span class="label"><i class="fa-solid fa-phone"></i> Phone:</span>
-                <span class="value">${userData.phone || 'N/A'}</span>
+                <span class="value">${userData.phone || "N/A"}</span>
               </div>
-              ${userData.dateOfBirth ? `
+              ${
+                userData.dateOfBirth
+                  ? `
                 <div class="profile-item">
                   <span class="label"><i class="fa-solid fa-calendar"></i> Date of Birth:</span>
-                  <span class="value">${userData.dateOfBirth || 'N/A'}</span>
+                  <span class="value">${userData.dateOfBirth || "N/A"}</span>
                 </div>
-              ` : ''}
-              ${userData.gender ? `
+              `
+                  : ""
+              }
+              ${
+                userData.gender
+                  ? `
                 <div class="profile-item">
                   <span class="label"><i class="fa-solid fa-venus-mars"></i> Gender:</span>
-                  <span class="value">${userData.gender || 'N/A'}</span>
+                  <span class="value">${userData.gender || "N/A"}</span>
                 </div>
-              ` : ''}
-              ${userData.location ? `
+              `
+                  : ""
+              }
+              ${
+                userData.location
+                  ? `
                 <div class="profile-item">
                   <span class="label"><i class="fa-solid fa-location-dot"></i> Location:</span>
-                  <span class="value">${userData.location || 'N/A'}</span>
+                  <span class="value">${userData.location || "N/A"}</span>
                 </div>
-              ` : ''}
-              ${userData.bio ? `
+              `
+                  : ""
+              }
+              ${
+                userData.bio
+                  ? `
                 <div class="profile-item full-width">
                   <span class="label"><i class="fa-solid fa-info-circle"></i> About Me:</span>
                   <span class="value bio-text">${userData.bio}</span>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
 
-            ${userData.role !== 'therapist' ? `
+            ${
+              userData.role !== "therapist"
+                ? `
               <!-- Mental Health Information (for users) -->
               <div class="profile-section">
                 <h3>Mental Health Information</h3>
-                ${userData.preferredLanguage ? `
+                ${
+                  userData.preferredLanguage
+                    ? `
                   <div class="profile-item">
                     <span class="label"><i class="fa-solid fa-language"></i> Preferred Language:</span>
                     <span class="value">${userData.preferredLanguage}</span>
                   </div>
-                ` : ''}
-                ${userData.mentalHealthConcerns && userData.mentalHealthConcerns.length > 0 ? `
+                `
+                    : ""
+                }
+                ${
+                  userData.mentalHealthConcerns &&
+                  userData.mentalHealthConcerns.length > 0
+                    ? `
                   <div class="profile-item full-width">
                     <span class="label"><i class="fa-solid fa-brain"></i> Primary Mental Health Concerns:</span>
                     <div class="profile-tags">
-                      ${userData.mentalHealthConcerns.map(concern => `<span class="tag">${concern}</span>`).join('')}
+                      ${userData.mentalHealthConcerns
+                        .map((concern) => `<span class="tag">${concern}</span>`)
+                        .join("")}
                     </div>
                   </div>
-                ` : ''}
-                ${userData.mentalHealthGoals ? `
+                `
+                    : ""
+                }
+                ${
+                  userData.mentalHealthGoals
+                    ? `
                   <div class="profile-item full-width">
                     <span class="label"><i class="fa-solid fa-target"></i> Mental Health Goals:</span>
                     <span class="value bio-text">${userData.mentalHealthGoals}</span>
                   </div>
-                ` : ''}
+                `
+                    : ""
+                }
               </div>
-            ` : ''}
+            `
+                : ""
+            }
 
-            ${userData.role === 'therapist' ? `
+            ${
+              userData.role === "therapist"
+                ? `
               <!-- Professional Information -->
               <div class="profile-section">
                 <h3>Professional Information</h3>
                 <div class="profile-item">
                   <span class="label"><i class="fa-solid fa-briefcase"></i> Specialization:</span>
-                  <span class="value">${userData.specialization || 'N/A'}</span>
+                  <span class="value">${userData.specialization || "N/A"}</span>
                 </div>
                 <div class="profile-item">
                   <span class="label"><i class="fa-solid fa-award"></i> Experience:</span>
-                  <span class="value">${userData.yearsExperience || 'N/A'} years</span>
+                  <span class="value">${
+                    userData.yearsExperience || "N/A"
+                  } years</span>
                 </div>
                 <div class="profile-item">
                   <span class="label"><i class="fa-solid fa-building"></i> Institution:</span>
-                  <span class="value">${userData.institution || 'N/A'}</span>
+                  <span class="value">${userData.institution || "N/A"}</span>
                 </div>
-                ${userData.bio ? `
+                ${
+                  userData.bio
+                    ? `
                   <div class="profile-item full-width">
                     <span class="label"><i class="fa-solid fa-info-circle"></i> Bio:</span>
                     <span class="value bio-text">${userData.bio}</span>
                   </div>
-                ` : ''}
+                `
+                    : ""
+                }
               </div>
 
               <!-- Professional Credentials -->
               <div class="profile-section">
                 <h3>Professional Credentials</h3>
-                ${userData.education ? `
+                ${
+                  userData.education
+                    ? `
                   <div class="profile-item">
                     <span class="label"><i class="fa-solid fa-graduation-cap"></i> Education:</span>
                     <span class="value">${userData.education}</span>
                   </div>
-                ` : ''}
-                ${userData.certifications ? `
+                `
+                    : ""
+                }
+                ${
+                  userData.certifications
+                    ? `
                   <div class="profile-item">
                     <span class="label"><i class="fa-solid fa-certificate"></i> Certifications:</span>
                     <span class="value">${userData.certifications}</span>
                   </div>
-                ` : ''}
-                ${userData.licenseNumber ? `
+                `
+                    : ""
+                }
+                ${
+                  userData.licenseNumber
+                    ? `
                   <div class="profile-item">
                     <span class="label"><i class="fa-solid fa-id-card"></i> License Number:</span>
                     <span class="value">${userData.licenseNumber}</span>
                   </div>
-                ` : ''}
+                `
+                    : ""
+                }
               </div>
 
-              ${userData.stats ? `
+              ${
+                userData.stats
+                  ? `
                 <div class="profile-section">
                   <h3>Statistics</h3>
                   <div class="profile-stats-grid">
                     <div class="stat">
-                      <span class="stat-number">${userData.stats.patientsHelped || 0}</span>
+                      <span class="stat-number">${
+                        userData.stats.patientsHelped || 0
+                      }</span>
                       <span class="stat-label">Patients Helped</span>
                     </div>
                     <div class="stat">
-                      <span class="stat-number">${userData.stats.hoursThisMonth || 0}h</span>
+                      <span class="stat-number">${
+                        userData.stats.hoursThisMonth || 0
+                      }h</span>
                       <span class="stat-label">Hours This Month</span>
                     </div>
                     <div class="stat">
-                      <span class="stat-number">${userData.stats.rating || '0.0'}</span>
+                      <span class="stat-number">${
+                        userData.stats.rating || "0.0"
+                      }</span>
                       <span class="stat-label">Average Rating</span>
                     </div>
                   </div>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
 
-              ${userData.languagesSpoken && userData.languagesSpoken.length > 0 ? `
+              ${
+                userData.languagesSpoken && userData.languagesSpoken.length > 0
+                  ? `
                 <div class="profile-section">
                   <h3>Languages</h3>
                   <div class="profile-tags">
-                    ${userData.languagesSpoken.map(lang => `<span class="tag">${lang}</span>`).join('')}
+                    ${userData.languagesSpoken
+                      .map((lang) => `<span class="tag">${lang}</span>`)
+                      .join("")}
                   </div>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
 
-              ${userData.areasOfExpertise && userData.areasOfExpertise.length > 0 ? `
+              ${
+                userData.areasOfExpertise &&
+                userData.areasOfExpertise.length > 0
+                  ? `
                 <div class="profile-section">
                   <h3>Areas of Expertise</h3>
                   <div class="profile-tags">
-                    ${userData.areasOfExpertise.map(area => `<span class="tag expertise-tag">${area}</span>`).join('')}
+                    ${userData.areasOfExpertise
+                      .map(
+                        (area) =>
+                          `<span class="tag expertise-tag">${area}</span>`
+                      )
+                      .join("")}
                   </div>
                 </div>
-              ` : ''}
-            ` : ''}
+              `
+                  : ""
+              }
+            `
+                : ""
+            }
           </div>
         </div>
       </div>
     `;
 
-    const container = document.createElement('div');
+    const container = document.createElement("div");
     container.innerHTML = modalHTML;
     document.body.appendChild(container.firstElementChild);
   }
@@ -1419,12 +1565,20 @@ class ChatManager {
       return;
     }
 
-    if (!confirm("Are you sure you want to clear this chat history? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to clear this chat history? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/chat/clear/${this.currentChat.id}`, {
+      // Use the conversation ID, not the therapist/user ID
+      const conversationId =
+        this.currentChat.conversationId || this.currentChat.id;
+
+      const response = await fetch(`/api/chat/${conversationId}/clear`, {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
@@ -1474,7 +1628,9 @@ class ChatManager {
       if (response.ok) {
         this.showSuccess(`${this.currentChat.name} has been blocked`);
         // Remove from conversation list
-        const element = document.querySelector(`[data-user-id="${this.currentChat.id}"]`);
+        const element = document.querySelector(
+          `[data-user-id="${this.currentChat.id}"]`
+        );
         if (element) {
           element.remove();
         }
@@ -1506,7 +1662,10 @@ class ChatManager {
       return;
     }
 
-    const reason = prompt(`Report ${this.currentChat.name}?\n\nPlease enter the reason:`, "");
+    const reason = prompt(
+      `Report ${this.currentChat.name}?\n\nPlease enter the reason:`,
+      ""
+    );
     if (!reason) {
       return;
     }
@@ -1523,7 +1682,9 @@ class ChatManager {
       });
 
       if (response.ok) {
-        this.showSuccess("Report submitted successfully. Thank you for helping keep our platform safe.");
+        this.showSuccess(
+          "Report submitted successfully. Thank you for helping keep our platform safe."
+        );
       } else {
         this.showError("Failed to submit report");
       }

@@ -5,6 +5,44 @@ const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const { auth } = require("../middleware/auth");
 
+// Clear chat history (soft delete messages) - MUST BE BEFORE PARAMETERIZED ROUTES
+router.delete("/:conversationId/clear", auth, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+
+    console.log("🧹 DELETE request received for clear endpoint");
+    console.log("Conversation ID:", conversationId);
+    console.log("User ID:", userId);
+
+    // Verify the user is part of this conversation
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      console.log("❌ Conversation not found:", conversationId);
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    if (!conversation.participants.includes(userId)) {
+      console.log("❌ User not authorized for this conversation");
+      return res
+        .status(403)
+        .json({ message: "Unauthorized: Not part of this conversation" });
+    }
+
+    // Soft delete all messages in this conversation by marking them as deleted
+    await Message.updateMany(
+      { conversation: conversationId },
+      { isDeleted: true }
+    );
+
+    console.log(`✅ Chat history cleared for conversation: ${conversationId}`);
+    res.json({ success: true, message: "Chat history cleared successfully" });
+  } catch (error) {
+    console.error("❌ Error clearing chat history:", error);
+    res.status(500).json({ message: "Error clearing chat history" });
+  }
+});
+
 // Get available therapists
 router.get("/therapists", auth, async (req, res) => {
   try {
@@ -85,7 +123,7 @@ router.get("/history/:therapistId", auth, async (req, res) => {
       conversation: conversation._id,
       isDeleted: false,
     })
-      .populate("sender", "name firstName lastName role")
+      .populate("sender", "firstName lastName role")
       .sort({ createdAt: -1 })
       .limit(limit)
       .skip(skip);
@@ -136,10 +174,10 @@ router.get("/history/user/:userId", auth, async (req, res) => {
         .json({ message: "Access denied: Therapists only" });
     }
 
-    // Verify the user exists and is not rejected
+    // Verify the user exists and is not rejected, and is not an admin or therapist
     const user = await User.findOne({
       _id: userId,
-      role: { $ne: "therapist" },
+      role: "user", // Only allow users, not therapists or admins
       registrationStatus: { $ne: "rejected" }, // Exclude rejected users
     });
     if (!user) {
@@ -154,7 +192,7 @@ router.get("/history/user/:userId", auth, async (req, res) => {
       conversation: conversation._id,
       isDeleted: false,
     })
-      .populate("sender", "name firstName lastName role")
+      .populate("sender", "firstName lastName role")
       .sort({ createdAt: -1 })
       .limit(limit)
       .skip(skip);
@@ -259,7 +297,7 @@ router.post("/send", auth, async (req, res) => {
     await conversation.incrementUnreadCount(recipientId);
 
     // Populate sender info for response
-    await newMessage.populate("sender", "name firstName lastName role");
+    await newMessage.populate("sender", "firstName lastName role");
 
     res.json({
       success: true,
@@ -298,10 +336,10 @@ router.get("/conversations", auth, async (req, res) => {
       .populate({
         path: "participants",
         select:
-          "name firstName lastName email role profilePicture registrationStatus",
+          "firstName lastName email role profilePicture registrationStatus",
         match: { registrationStatus: { $ne: "rejected" } }, // Exclude rejected participants
       })
-      .populate("lastMessage.sender", "name firstName lastName")
+      .populate("lastMessage.sender", "firstName lastName")
       .sort({ "lastMessage.timestamp": -1 });
 
     console.log("Found conversations:", conversations.length);
@@ -329,6 +367,14 @@ router.get("/conversations", auth, async (req, res) => {
           if (!otherParticipant) {
             console.warn(
               `No other participant found for conversation ${conv._id}`
+            );
+            return null;
+          }
+
+          // Skip if the other participant is an admin
+          if (otherParticipant.role === "admin") {
+            console.log(
+              `Skipping admin participant in conversation ${conv._id}`
             );
             return null;
           }
@@ -409,10 +455,10 @@ router.get("/my-conversations", auth, async (req, res) => {
       .populate({
         path: "participants",
         select:
-          "name firstName lastName email role profilePicture specialization registrationStatus",
+          "firstName lastName email role profilePicture specialization registrationStatus",
         match: { registrationStatus: { $ne: "rejected" } }, // Exclude rejected participants
       })
-      .populate("lastMessage.sender", "name firstName lastName")
+      .populate("lastMessage.sender", "firstName lastName")
       .sort({ "lastMessage.timestamp": -1 });
 
     console.log("Found conversations:", conversations.length);
@@ -440,6 +486,14 @@ router.get("/my-conversations", auth, async (req, res) => {
           if (!therapist) {
             console.warn(
               `No other participant found for conversation ${conv._id}`
+            );
+            return null;
+          }
+
+          // Skip if the other participant is an admin
+          if (therapist.role === "admin") {
+            console.log(
+              `Skipping admin participant in conversation ${conv._id}`
             );
             return null;
           }
